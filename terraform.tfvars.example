@@ -1,0 +1,28 @@
+# ──────────────────────────────────────────
+# OCI 인증
+# ──────────────────────────────────────────
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaa..."
+user_ocid        = "ocid1.user.oc1..aaaa..."
+fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:..."
+private_key_path = "/path/to/oci_api_key.pem"
+region           = "ap-tokyo-1"
+
+# ──────────────────────────────────────────
+# 리소스 대상
+# ──────────────────────────────────────────
+compartment_ocid = "ocid1.compartment.oc1..aaaa..."
+
+# ──────────────────────────────────────────
+# Compute
+# ──────────────────────────────────────────
+ssh_authorized_keys = "ssh-rsa AAAAB3Nza... user@host"
+
+# ──────────────────────────────────────────
+# Database
+# ──────────────────────────────────────────
+db_admin_password = "MyStr0ng#Pass!"
+
+# ──────────────────────────────────────────
+# Bastion (본인 공인 IP로 제한)
+# ──────────────────────────────────────────
+bastion_allowed_cidrs = ["1.2.3.4/32"]
