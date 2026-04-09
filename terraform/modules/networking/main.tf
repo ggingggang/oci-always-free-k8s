@@ -29,6 +29,18 @@ resource "oci_core_nat_gateway" "nat" {
   display_name   = "nat-main"
 }
 
+data "oci_core_services" "all" {}
+
+resource "oci_core_service_gateway" "sgw" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_vcn.main.id
+  display_name   = "sgw-main"
+
+  services {
+    service_id = data.oci_core_services.all.services[0].id
+  }
+}
+
 # ──────────────────────────────────────────
 # Route Tables
 # ──────────────────────────────────────────
@@ -44,18 +56,6 @@ resource "oci_core_route_table" "pub" {
   }
 }
 
-resource "oci_core_route_table" "masters" {
-  compartment_id = var.compartment_ocid
-  vcn_id         = oci_core_vcn.main.id
-  display_name   = "rt-masters"
-
-  route_rules {
-    destination       = "0.0.0.0/0"
-    destination_type  = "CIDR_BLOCK"
-    network_entity_id = oci_core_nat_gateway.nat.id
-  }
-}
-
 resource "oci_core_route_table" "workers" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.main.id
@@ -66,162 +66,218 @@ resource "oci_core_route_table" "workers" {
     destination_type  = "CIDR_BLOCK"
     network_entity_id = oci_core_nat_gateway.nat.id
   }
+
+  route_rules {
+    destination       = data.oci_core_services.all.services[0].cidr_block
+    destination_type  = "SERVICE_CIDR_BLOCK"
+    network_entity_id = oci_core_service_gateway.sgw.id
+  }
 }
 
 resource "oci_core_route_table" "db" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.main.id
   display_name   = "rt-db"
+
+  # OCI 내부 서비스 접근 (패치, 백업 등) — 인터넷 노출 없음
+  route_rules {
+    destination       = data.oci_core_services.all.services[0].cidr_block
+    destination_type  = "SERVICE_CIDR_BLOCK"
+    network_entity_id = oci_core_service_gateway.sgw.id
+  }
 }
 
 # ──────────────────────────────────────────
 # Security Lists
 # ──────────────────────────────────────────
 
-# pub: egress → masters only
+# OKE API endpoint subnet
+resource "oci_core_security_list" "oke_api" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_vcn.main.id
+  display_name   = "sl-oke-api"
+
+  # API → workers (all)
+  egress_security_rules {
+    destination = "10.0.102.0/24"
+    protocol    = "all"
+  }
+
+  # API → OCI services
+  egress_security_rules {
+    destination      = data.oci_core_services.all.services[0].cidr_block
+    destination_type = "SERVICE_CIDR_BLOCK"
+    protocol         = "6"
+    tcp_options {
+      min = 443
+      max = 443
+    }
+  }
+
+  # kubectl → API (6443)
+  ingress_security_rules {
+    source   = "0.0.0.0/0"
+    protocol = "6"
+    tcp_options {
+      min = 6443
+      max = 6443
+    }
+  }
+
+  # workers → API (6443)
+  ingress_security_rules {
+    source   = "10.0.102.0/24"
+    protocol = "6"
+    tcp_options {
+      min = 6443
+      max = 6443
+    }
+  }
+
+  # workers → API (12250 - OKE control plane)
+  ingress_security_rules {
+    source   = "10.0.102.0/24"
+    protocol = "6"
+    tcp_options {
+      min = 12250
+      max = 12250
+    }
+  }
+}
+
+# pub: LB subnet
 resource "oci_core_security_list" "pub" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.main.id
   display_name   = "sl-public"
 
-  egress_security_rules {
-    destination = "10.0.101.0/28"
-    protocol    = "all"
-  }
-
-  # LB → workers (NodePort)
+  # LB → workers (NodePort range)
   egress_security_rules {
     destination = "10.0.102.0/24"
     protocol    = "6"
     tcp_options {
-      min = 30080
-      max = 30080
+      min = 30000
+      max = 32767
     }
   }
 
-  ingress_security_rules {
-    source   = "0.0.0.0/0"
-    protocol = "6" # TCP
-    tcp_options {
-      max = 443
-      min = 443
-    }
-  }
-
-  ingress_security_rules {
-    source   = "0.0.0.0/0"
-    protocol = "6"
-    tcp_options {
-      max = 80
-      min = 80
-    }
-  }
-}
-
-# masters: egress → workers + db, ingress ← pub + workers
-resource "oci_core_security_list" "masters" {
-  compartment_id = var.compartment_ocid
-  vcn_id         = oci_core_vcn.main.id
-  display_name   = "sl-masters"
-
+  # LB health check responses
   egress_security_rules {
     destination = "10.0.102.0/24"
-    protocol    = "all"
-  }
-
-  egress_security_rules {
-    destination = "10.0.201.0/28"
-    protocol    = "all"
-  }
-
-  # Allow outbound via NAT
-  egress_security_rules {
-    destination = "0.0.0.0/0"
-    protocol    = "all"
+    protocol    = "6"
+    tcp_options {
+      min = 10256
+      max = 10256
+    }
   }
 
   ingress_security_rules {
-    source   = "10.0.1.0/28"
-    protocol = "all"
-  }
-
-  # workers → masters (kubelet → API server)
-  ingress_security_rules {
-    source   = "10.0.102.0/24"
-    protocol = "all"
-  }
-
-  # Bastion → master SSH (Bastion accesses within masters subnet)
-  ingress_security_rules {
-    source   = "10.0.101.0/28"
+    source   = "0.0.0.0/0"
     protocol = "6"
     tcp_options {
-      min = 22
-      max = 22
+      min = 443
+      max = 443
+    }
+  }
+
+  ingress_security_rules {
+    source   = "0.0.0.0/0"
+    protocol = "6"
+    tcp_options {
+      min = 80
+      max = 80
     }
   }
 }
 
-# workers: egress → masters + db, ingress ← masters + pub(LB)
+# workers: OKE node pool
 resource "oci_core_security_list" "workers" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.main.id
   display_name   = "sl-workers"
 
-  # workers → masters (kubelet → API server)
-  egress_security_rules {
-    destination = "10.0.101.0/28"
-    protocol    = "all"
-  }
-
-  egress_security_rules {
-    destination = "10.0.201.0/28"
-    protocol    = "all"
-  }
-
-  # Allow outbound via NAT
+  # workers → all (NAT outbound)
   egress_security_rules {
     destination = "0.0.0.0/0"
     protocol    = "all"
   }
 
-  ingress_security_rules {
-    source   = "10.0.101.0/28"
-    protocol = "all"
+  # workers → OCI services
+  egress_security_rules {
+    destination      = data.oci_core_services.all.services[0].cidr_block
+    destination_type = "SERVICE_CIDR_BLOCK"
+    protocol         = "all"
   }
 
-  # worker ↔ worker (inter-Pod traffic)
-  ingress_security_rules {
-    source   = "10.0.102.0/24"
-    protocol = "all"
-  }
-
-  # LB(pub subnet) → worker NodePort
-  ingress_security_rules {
-    source   = "10.0.1.0/28"
-    protocol = "6"
+  # workers → OKE API (6443)
+  egress_security_rules {
+    destination = "10.0.0.0/28"
+    protocol    = "6"
     tcp_options {
-      min = 30080
-      max = 30080
+      min = 6443
+      max = 6443
     }
   }
-}
 
-# db: ingress ← masters + workers (MySQL 3306 only)
-resource "oci_core_security_list" "db" {
-  compartment_id = var.compartment_ocid
-  vcn_id         = oci_core_vcn.main.id
-  display_name   = "sl-db"
+  # workers → OKE API (12250)
+  egress_security_rules {
+    destination = "10.0.0.0/28"
+    protocol    = "6"
+    tcp_options {
+      min = 12250
+      max = 12250
+    }
+  }
 
-  # masters → DB
-  ingress_security_rules {
-    source   = "10.0.101.0/28"
-    protocol = "6"
+  # workers → DB
+  egress_security_rules {
+    destination = "10.0.201.0/28"
+    protocol    = "6"
     tcp_options {
       min = 3306
       max = 3306
     }
   }
+
+  # worker ↔ worker (inter-Pod traffic, Flannel VXLAN)
+  ingress_security_rules {
+    source   = "10.0.102.0/24"
+    protocol = "all"
+  }
+
+  # OKE API → workers (all)
+  ingress_security_rules {
+    source   = "10.0.0.0/28"
+    protocol = "all"
+  }
+
+  # LB → worker NodePort range
+  ingress_security_rules {
+    source   = "10.0.1.0/28"
+    protocol = "6"
+    tcp_options {
+      min = 30000
+      max = 32767
+    }
+  }
+
+  # LB health check
+  ingress_security_rules {
+    source   = "10.0.1.0/28"
+    protocol = "6"
+    tcp_options {
+      min = 10256
+      max = 10256
+    }
+  }
+
+}
+
+# db: ingress ← workers only (MySQL 3306)
+resource "oci_core_security_list" "db" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_vcn.main.id
+  display_name   = "sl-db"
 
   # workers → DB
   ingress_security_rules {
@@ -243,6 +299,18 @@ resource "oci_core_security_list" "db" {
 # ──────────────────────────────────────────
 # Subnets
 # ──────────────────────────────────────────
+resource "oci_core_subnet" "oke_api" {
+  compartment_id    = var.compartment_ocid
+  vcn_id            = oci_core_vcn.main.id
+  cidr_block        = "10.0.0.0/28"
+  display_name      = "subnet-oke-api"
+  dns_label         = "subokeapi"
+  route_table_id    = oci_core_route_table.pub.id
+  security_list_ids = [oci_core_security_list.oke_api.id]
+
+  prohibit_public_ip_on_vnic = false
+}
+
 resource "oci_core_subnet" "pub" {
   compartment_id    = var.compartment_ocid
   vcn_id            = oci_core_vcn.main.id
@@ -253,18 +321,6 @@ resource "oci_core_subnet" "pub" {
   security_list_ids = [oci_core_security_list.pub.id]
 
   prohibit_public_ip_on_vnic = false
-}
-
-resource "oci_core_subnet" "masters" {
-  compartment_id    = var.compartment_ocid
-  vcn_id            = oci_core_vcn.main.id
-  cidr_block        = "10.0.101.0/28"
-  display_name      = "subnet-masters"
-  dns_label         = "submasters"
-  route_table_id    = oci_core_route_table.masters.id
-  security_list_ids = [oci_core_security_list.masters.id]
-
-  prohibit_public_ip_on_vnic = true
 }
 
 resource "oci_core_subnet" "workers" {
@@ -289,15 +345,4 @@ resource "oci_core_subnet" "db" {
   security_list_ids = [oci_core_security_list.db.id]
 
   prohibit_public_ip_on_vnic = true
-}
-
-# ──────────────────────────────────────────
-# Bastion
-# ──────────────────────────────────────────
-resource "oci_bastion_bastion" "main" {
-  compartment_id               = var.compartment_ocid
-  bastion_type                 = "STANDARD"
-  target_subnet_id             = oci_core_subnet.masters.id
-  name                         = "bastion-main"
-  client_cidr_block_allow_list = var.bastion_allowed_cidrs
 }
