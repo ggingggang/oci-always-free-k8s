@@ -36,3 +36,9 @@ variable "ssh_authorized_keys" {
 variable "user_data_file" {
   type = string
 }
+
+variable "endpoint_nsg_ids" {
+  type        = list(string)
+  default     = []
+  description = "NSG OCIDs to attach to the OKE API endpoint"
+}

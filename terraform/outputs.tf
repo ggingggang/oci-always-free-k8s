@@ -30,6 +30,11 @@ output "oke_node_pool_id" {
   value = module.oke.node_pool_id
 }
 
+output "nsg_public_id" {
+  value       = module.iam.nsg_public_id
+  description = "NSG OCID for LB annotation (oci-load-balancer-nsg-ids)"
+}
+
 output "heatwave_ip" {
   value = module.database.heatwave_ip
 }

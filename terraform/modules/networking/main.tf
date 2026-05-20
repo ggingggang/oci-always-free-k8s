@@ -31,13 +31,22 @@ resource "oci_core_nat_gateway" "nat" {
 
 data "oci_core_services" "all" {}
 
+locals {
+  # "All <Region> Services In Oracle Services Network" 을 명시적으로 선택
+  # services[0] 인덱스는 리전마다 순서가 달라 Object Storage만 잡힐 수 있음
+  all_services = [
+    for s in data.oci_core_services.all.services :
+    s if startswith(s.name, "All ")
+  ][0]
+}
+
 resource "oci_core_service_gateway" "sgw" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.main.id
   display_name   = "sgw-main"
 
   services {
-    service_id = data.oci_core_services.all.services[0].id
+    service_id = local.all_services.id
   }
 }
 
@@ -68,7 +77,7 @@ resource "oci_core_route_table" "workers" {
   }
 
   route_rules {
-    destination       = data.oci_core_services.all.services[0].cidr_block
+    destination       = local.all_services.cidr_block
     destination_type  = "SERVICE_CIDR_BLOCK"
     network_entity_id = oci_core_service_gateway.sgw.id
   }
@@ -81,7 +90,7 @@ resource "oci_core_route_table" "db" {
 
   # OCI 내부 서비스 접근 (패치, 백업 등) — 인터넷 노출 없음
   route_rules {
-    destination       = data.oci_core_services.all.services[0].cidr_block
+    destination       = local.all_services.cidr_block
     destination_type  = "SERVICE_CIDR_BLOCK"
     network_entity_id = oci_core_service_gateway.sgw.id
   }
@@ -105,7 +114,7 @@ resource "oci_core_security_list" "oke_api" {
 
   # API → OCI services
   egress_security_rules {
-    destination      = data.oci_core_services.all.services[0].cidr_block
+    destination      = local.all_services.cidr_block
     destination_type = "SERVICE_CIDR_BLOCK"
     protocol         = "6"
     tcp_options {
@@ -114,15 +123,7 @@ resource "oci_core_security_list" "oke_api" {
     }
   }
 
-  # kubectl → API (6443)
-  ingress_security_rules {
-    source   = "0.0.0.0/0"
-    protocol = "6"
-    tcp_options {
-      min = 6443
-      max = 6443
-    }
-  }
+  # External kubectl → API (6443): handled by NSG (allowed_cidr only)
 
   # workers → API (6443)
   ingress_security_rules {
@@ -204,7 +205,7 @@ resource "oci_core_security_list" "workers" {
 
   # workers → OCI services
   egress_security_rules {
-    destination      = data.oci_core_services.all.services[0].cidr_block
+    destination      = local.all_services.cidr_block
     destination_type = "SERVICE_CIDR_BLOCK"
     protocol         = "all"
   }

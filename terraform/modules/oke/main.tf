@@ -21,6 +21,7 @@ resource "oci_containerengine_cluster" "k8s" {
   endpoint_config {
     is_public_ip_enabled = true
     subnet_id            = var.subnet_oke_api_id
+    nsg_ids              = var.endpoint_nsg_ids
   }
 
   cluster_pod_network_options {

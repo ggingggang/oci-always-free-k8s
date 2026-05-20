@@ -22,6 +22,10 @@ crash.*.log
 # Bastion session cache
 .bastion_session.json
 
+# IDE / Editor
+.vscode/
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -7,19 +7,18 @@ terraform {
 }
 
 # ──────────────────────────────────────────
-# OKE Node IAM
+# NSG — 허용 IP에서 모든 포트 접근 가능
 # ──────────────────────────────────────────
-# 현재 Basic Cluster + HeatWave 구성에서는 별도 IAM 정책 불필요.
-#
-# 추후 노드에서 OCI 서비스 접근이 필요한 경우 아래를 참고:
-#
-# 1. OCIR (Container Registry) 프라이빗 이미지 pull
-#    → Dynamic Group + Policy "Allow dynamic-group ... to read repos in tenancy"
-#
-# 2. Object Storage 접근 (PersistentVolume 등)
-#    → Policy "Allow dynamic-group ... to manage object-family in compartment ..."
-#
-# 3. OCI Vault / Secrets (민감 정보 주입)
-#    → Dynamic Group + Policy "Allow dynamic-group ... to read secret-family in tenancy"
-#
-# ──────────────────────────────────────────
+resource "oci_core_network_security_group" "public_access" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = var.vcn_id
+  display_name   = "nsg-public-access"
+}
+
+resource "oci_core_network_security_group_security_rule" "allow_all" {
+  network_security_group_id = oci_core_network_security_group.public_access.id
+  direction                 = "INGRESS"
+  protocol                  = "all"
+  source                    = var.allowed_cidr
+  source_type               = "CIDR_BLOCK"
+}

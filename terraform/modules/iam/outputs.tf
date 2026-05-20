@@ -1,15 +1,4 @@
-# output "dynamic_group_id" {
-#   value = oci_identity_dynamic_group.master_vault.id
-# }
-
-# output "policy_id" {
-#   value = oci_identity_policy.master_vault.id
-# }
-
-# output "vault_id" {
-#   value = oci_kms_vault.kube_join_token.id
-# }
-
-# output "key_id" {
-#   value = oci_kms_key.vault_key.id
-# }
+output "nsg_public_id" {
+  value       = oci_core_network_security_group.public_access.id
+  description = "LB Service 어노테이션에 사용: oci-load-balancer-nsg-ids"
+}

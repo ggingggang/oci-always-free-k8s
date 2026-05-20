@@ -28,6 +28,27 @@ module "oke" {
   kubernetes_version  = var.kubernetes_version
   ssh_authorized_keys = var.ssh_authorized_keys
   user_data_file      = "./modules/oke/scripts/node_pool_init.sh"
+  endpoint_nsg_ids    = [module.iam.nsg_public_id]
+}
+
+# ──────────────────────────────────────────
+# IAM (Dynamic Group, Policy, NSG)
+# ──────────────────────────────────────────
+module "iam" {
+  source           = "./modules/iam"
+  compartment_ocid = var.compartment_ocid
+  vcn_id           = module.networking.vcn_id
+  allowed_cidr     = var.allowed_cidr
+}
+
+# ──────────────────────────────────────────
+# Block Volume (Always Free: 200GB total incl. boot)
+# Boot 2x47GB=94GB → PV available ~106GB (2 vols)
+# ──────────────────────────────────────────
+module "storage" {
+  source              = "./modules/storage"
+  compartment_ocid    = var.compartment_ocid
+  availability_domain = local.availability_domain
 }
 
 # ──────────────────────────────────────────

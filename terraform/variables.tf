@@ -35,3 +35,8 @@ variable "kubernetes_version" {
   type    = string
   default = "v1.34.2"
 }
+
+variable "allowed_cidr" {
+  type        = string
+  description = "공인 서비스 접근 허용 IP (e.g. 1.2.3.4/32)"
+}
