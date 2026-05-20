@@ -17,7 +17,7 @@
 | :--- | :--- | :--- |
 | Flexible Network Load Balancer | Layer 3/Layer 4 traffic distribution | 1 instance |
 | Load Balancer | Highly available load balancers with provisioned bandwidth | 1 instance, 10 Mbps |
-| Outbound Data Transfer | Data transfer out of OCI | Up to 10 TB per month |
+| Outbound Data Transfer | Egress traffic to the internet via Internet Gateway, NAT Gateway, and Load Balancer responses. Excludes intra-VCN traffic and OCI-internal traffic routed through Service Gateway | Up to 10 TB per month |
 | Service Connector Hub | Message bus for data movement between OCI services | 2 service connectors |
 | Site-to-Site VPN | IPSec connection between on-premises and VCN | 50 IPSec connections |
 | VCN Flow Logs | Traffic details for auditing and troubleshooting | Up to 10 GB per month (shared) |
@@ -42,7 +42,7 @@
 ## Security
 | Resource | Description | Always Free Limit |
 | :--- | :--- | :--- |
-| Bastions | Restricted SSH access to private targets | Up to 5 OCI Bastions |
+| Bastions | Restricted SSH access to private targets | Up to 20 OCI Bastions |
 | Certificates | Certificate issuance and management | 5 Private CA & 150 private TLS certificates |
 | Vault | Master encryption keys and secrets management | 20 key versions (HSM) & 150 Vault secrets |
 
@@ -62,14 +62,17 @@
 
 ---
 
-## 공식 무료 리소스 (Effectively Free — 공식 Always Free 목록 외)
+## Effectively Free — Not in the Official Always Free List
 
-공식 Always Free 목록에는 없지만, 기존 Always Free 리소스를 활용하거나 서비스 자체가 무료라서 **실질적으로 무료로 사용 가능한** 리소스입니다.
+Resources not listed in the official Always Free catalog, but usable at no cost by leveraging existing Always Free resources or because the service itself carries no charge.
 
-| Resource | Description | 무료 조건 | 주의사항 |
+| Resource | Description | Why It's Free | Notes |
 | :--- | :--- | :--- | :--- |
-| OKE Basic Cluster (Container Engine for Kubernetes) | Oracle 관리형 Kubernetes 컨트롤 플레인 | 컨트롤 플레인 자체는 무료. 워커 노드에 Always Free A1 인스턴스 사용 시 전체 무료 운영 가능 | PAYG 계정 필요. Virtual Node, Add-on, 컨트롤 플레인 SLA 미지원 |
-| Container Instances (CI.Standard.A1.Flex) | VM 없이 컨테이너를 직접 실행하는 서버리스 컨테이너 | A1 Flex Always Free 쿼터(월 3,000 OCPU시간 / 18,000 GB시간)를 VM·베어메탈과 공유하여 무료 사용 가능. 서비스 자체 추가 요금 없음 | A1 쿼터는 VM·Container Instances·Bare Metal 합산 적용 |
+| OKE Basic Cluster (Container Engine for Kubernetes) | Oracle-managed Kubernetes control plane | Control plane itself is free. Running worker nodes on Always Free A1 instances makes the entire cluster free to operate | Requires a PAYG account. Virtual Nodes, OKE Add-ons, and control plane SLA are not supported |
+| Container Instances (CI.Standard.A1.Flex) | Serverless containers — run containers directly without managing VMs | Uses the shared A1 Flex Always Free quota (3,000 OCPU-hours / 18,000 GB-hours per month). No additional service charge | A1 quota is shared across VMs, Container Instances, and Bare Metal |
+| Internet Gateway | Direct connectivity between a VCN and the internet | Gateway itself is free. Outbound traffic is free up to 10 TB/month | Data transfer charges apply beyond the 10 TB threshold |
+| NAT Gateway | Outbound internet access for resources without a public IP | Gateway itself is free. Outbound traffic is free up to 10 TB/month | Data transfer charges apply beyond the 10 TB threshold |
+| Service Gateway | Private access to OCI services (e.g. Object Storage) from within a VCN | **No additional cost** (explicitly stated on Oracle's product page). Enables secure access to OCI-internal services without traversing the internet | Not listed in the official Always Free catalog, but Oracle explicitly states "no additional cost" |
 
-> **참고**: OKE + Container Instances 조합 시 A1 쿼터를 초과하지 않도록 주의가 필요합니다.
+> **Note**: When combining OKE and Container Instances, ensure total A1 quota usage does not exceed the Always Free limit.
 
