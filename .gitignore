@@ -22,9 +22,11 @@ crash.*.log
 # Bastion session cache
 .bastion_session.json
 
-# IDE / Editor
+# IDE / Editor / AI
 .vscode/
 .claude/
+claude.md
+.obsidian/
 
 # OS
 .DS_Store

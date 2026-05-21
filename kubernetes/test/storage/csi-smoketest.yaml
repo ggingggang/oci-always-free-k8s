@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-smoketest
+  namespace: default
+  labels:
+    app.kubernetes.io/name: csi-smoketest
+    app.kubernetes.io/component: storage-verification
+    app.kubernetes.io/managed-by: manual
+spec:
+  accessModes: ["ReadWriteOnce"]   # OCI Block Volume is single-attach
+  resources:
+    requests:
+      storage: 50Gi                 # OCI minimum 50GB per volume; smaller requests round up
+  storageClassName: oci-bv          # Default OKE StorageClass for Block Volume CSI
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: csi-smoketest
+  namespace: default
+  labels:
+    app.kubernetes.io/name: csi-smoketest
+spec:
+  # PSA-restricted-ready posture (matches the restricted enforcement we'll apply to `app` ns later)
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000                   # chown mounted volume so non-root can write
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: busybox:1.36
+      command: ["sh", "-c", "echo 'csi-smoketest ok' > /data/hello && sleep 3600"]
+      volumeMounts:
+        - mountPath: /data
+          name: vol
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+  volumes:
+    - name: vol
+      persistentVolumeClaim:
+        claimName: csi-smoketest

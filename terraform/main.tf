@@ -45,15 +45,15 @@ module "iam" {
 # Block Volume (Always Free: 200GB total incl. boot)
 # Boot 2x47GB=94GB → PV available ~106GB (2 vols)
 # ──────────────────────────────────────────
-module "storage" {
-  source              = "./modules/storage"
-  compartment_ocid    = var.compartment_ocid
-  availability_domain = local.availability_domain
-}
+# module "storage" {
+#   source              = "./modules/storage"
+#   compartment_ocid    = var.compartment_ocid
+#   availability_domain = local.availability_domain
+# }
 
-# ──────────────────────────────────────────
+#──────────────────────────────────────────
 # HeatWave MySQL (Always Free)
-# ──────────────────────────────────────────
+#──────────────────────────────────────────
 module "database" {
   source              = "./modules/database"
   compartment_ocid    = var.compartment_ocid
