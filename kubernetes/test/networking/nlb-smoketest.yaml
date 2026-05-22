@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nlb-smoketest
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nlb-smoketest
+    app.kubernetes.io/component: networking-verification
+    app.kubernetes.io/managed-by: manual
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nlb-smoketest
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nlb-smoketest
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: docker.io/nginxinc/nginx-unprivileged:1.27-alpine
+          ports:
+            - containerPort: 8080
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nlb-smoketest
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nlb-smoketest
+    app.kubernetes.io/component: networking-verification
+    app.kubernetes.io/managed-by: manual
+  annotations:
+    oci.oraclecloud.com/load-balancer-type: "nlb"
+    oci-network-load-balancer.oraclecloud.com/oci-network-load-balancer-shape: "flexible"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: nlb-smoketest
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
