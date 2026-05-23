@@ -1,0 +1,17 @@
+profile: ambient
+
+pilot:
+  replicaCount: 1
+  autoscaleEnabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+meshConfig:
+  accessLogFile: /dev/stdout
+  defaultConfig:
+    proxyMetadata:
+      ISTIO_META_DNS_CAPTURE: "true"

@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: public-gateway
+  namespace: istio-system
+spec:
+  gatewayClassName: istio
+  infrastructure:
+    annotations:
+      oci.oraclecloud.com/load-balancer-type: "nlb"
+      oci-network-load-balancer.oraclecloud.com/oci-network-load-balancer-shape: "flexible"
+      oci-network-load-balancer.oraclecloud.com/oci-network-load-balancer-is-preserve-source: "true"
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
