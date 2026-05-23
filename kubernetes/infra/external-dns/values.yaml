@@ -1,0 +1,28 @@
+provider:
+  name: cloudflare
+
+env:
+  - name: CF_API_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: cloudflare-api-token
+        key: api-token
+
+sources:
+  - gateway-httproute
+  - gateway-grpcroute
+
+policy: sync
+
+registry: txt
+txtOwnerId: oci-oke
+
+logLevel: info
+logFormat: json
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
