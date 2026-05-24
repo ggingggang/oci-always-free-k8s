@@ -17,3 +17,27 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    - name: https-apex
+      port: 443
+      protocol: HTTPS
+      hostname: "<your-domain>"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: public-wildcard-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https-wildcard
+      port: 443
+      protocol: HTTPS
+      hostname: "*.<your-domain>"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: public-wildcard-tls
+      allowedRoutes:
+        namespaces:
+          from: All

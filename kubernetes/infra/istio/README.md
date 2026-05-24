@@ -8,12 +8,15 @@
 
 - Gateway API CRD 설치 완료 (`../gateway-api/`)
 - `istio-system` 네임스페이스 존재 (`../namespaces/namespaces.yaml`)
+- cert-manager Certificate `istio-system/public-wildcard` Ready=True (`../cert-manager/`)
 - Helm 3.6+ (또는 4)
 - 권장 버전: **Istio 1.29.x** (`~1.29.0` SemVer 범위)
 
 ## 2. 설치
 
 ```bash
+export DOMAIN=<your-domain>
+
 helm repo add istio https://istio-release.storage.googleapis.com/charts
 helm repo update
 
@@ -22,10 +25,8 @@ helm install istiod     istio/istiod  -n istio-system --version "~1.29.0" -f ist
 helm install istio-cni  istio/cni     -n istio-system --version "~1.29.0" -f cni.values.yaml     --wait
 helm install ztunnel    istio/ztunnel -n istio-system --version "~1.29.0" -f ztunnel.values.yaml --wait
 
-kubectl apply -f gateway.yaml
-```
-
-```bash
+sed -e "s|<your-domain>|${DOMAIN}|g" gateway.yaml | kubectl apply -f -
+kubectl apply -f http-redirect.yaml
 ```
 
 ## 3. 검증
@@ -35,10 +36,23 @@ kubectl get pods -n istio-system
 kubectl get gatewayclass
 kubectl get gateway -n istio-system
 kubectl get deployment,svc -n istio-system -l gateway.networking.k8s.io/gateway-name=public-gateway
-curl -v http://<GATEWAY_IP>/   # HTTPRoute 미연결 상태에서 404 + server: istio-envoy 가 정상
-```
+kubectl get httproute -n istio-system
 
-```bash
+GATEWAY_IP=$(kubectl get gateway public-gateway -n istio-system -o jsonpath='{.status.addresses[0].value}')
+
+# HTTP → 308 redirect to https
+curl -vI "http://${DOMAIN}" --resolve "${DOMAIN}:80:${GATEWAY_IP}"
+
+# HTTPS apex TLS handshake
+openssl s_client -connect "${GATEWAY_IP}:443" -servername "${DOMAIN}" </dev/null 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
+
+# HTTPS wildcard TLS handshake
+openssl s_client -connect "${GATEWAY_IP}:443" -servername "test.${DOMAIN}" </dev/null 2>/dev/null \
+  | openssl x509 -noout -subject
+
+# HTTPRoute 미연결 상태에서 https 응답은 404 + server: istio-envoy 가 정상
+curl -vIk "https://${DOMAIN}" --resolve "${DOMAIN}:443:${GATEWAY_IP}"
 ```
 
 ## 4. 결정
@@ -85,6 +99,28 @@ Helm only. istioctl로 설치 시 GitOps drift 추적 불가.
 
 ambient → sidecar 전환은 사실상 재설치. 결정 본 단계에서 고정.
 
+### Listener — HTTPS는 apex/wildcard 분리, HTTP는 catch-all
+
+```
+http              port 80   hostname 미지정 (catch-all)        → redirect
+https-apex        port 443  hostname <your-domain>             → TLS Terminate
+https-wildcard    port 443  hostname *.<your-domain>           → TLS Terminate
+```
+
+`*.<your-domain>` 와일드카드는 apex `<your-domain>`를 매칭하지 않음 (RFC 6125). apex 트래픽까지 받으려면 listener 분리 필수. 같은 `public-wildcard-tls` Secret을 두 listener가 참조 — cert SAN에 apex + 와일드카드 둘 다 있으므로 단일 Secret으로 충분.
+
+HTTP listener는 hostname 박지 않음. HTTP는 redirect 전용이라 listener에서 host 매칭 의미 없음. host 매칭은 redirect 후 HTTPS listener + HTTPRoute가 책임.
+
+### HTTP → HTTPS Redirect는 별도 HTTPRoute
+
+`http-redirect.yaml` 분리. Gateway = 네트워크 진입점 정의 / HTTPRoute = 라우팅 정책. 책임 경계 분리.
+
+`parentRefs.sectionName: http` 로 80 listener에만 attach. statusCode 308 (method-preserving) — 301과 달리 POST/PUT 메소드 보존. HSTS와 같이 운영하면 redirect는 첫 접속만 거치므로 코드 차이 체감은 적지만 명목상 정확.
+
+### TLS mode: Terminate
+
+NLB가 TCP passthrough이므로 TLS 종료는 Gateway envoy가 책임. mTLS passthrough (`mode: Passthrough`) 비채택 — Gateway가 SNI만 보고 백엔드로 그대로 전달하는 모드라 L7 라우팅/policy 불가. 클러스터 내부 mTLS는 Istio Ambient ztunnel이 별도 처리.
+
 ## 5. 주의 사항
 
 ### Cilium chaining 도입 시 CNI 순서 충돌 가능
@@ -97,9 +133,9 @@ Flannel  →  Cilium (NetworkPolicy + Hubble)  →  Istio CNI (ambient redirect)
 
 Istio CNI는 `cni.chained: true`로 설정되어 마지막 위치를 기대함. Cilium chaining 설치 매니페스트에서 `cni-conf-path` 우선순위를 확인하고 충돌 시 `cniBinDir` / `cniConfDir` 명시 override 필요.
 
-### TLS 보류 상태
+### Certificate Secret 의존
 
-`gateway.yaml`의 listener는 현재 HTTP 80 단독. HTTPS 443 + redirect 추가는 cert-manager + ClusterIssuer 설치 후. 그 시점에 listener 추가 + `tls.certificateRefs` 박음.
+`gateway.yaml` HTTPS listener는 `istio-system/public-wildcard-tls` Secret 참조. cert-manager Certificate (`../cert-manager/certificate.yaml`) 발급 완료(Ready=True) 후 Gateway apply 권장. Secret 미존재 상태로 apply 시 Gateway status에 `ResolvedRefs: False` 박힘 — Certificate 발급되면 자동 회복되지만 Gateway listener status 노이즈 발생.
 
 ### istio-system PSA
 
