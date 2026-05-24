@@ -18,6 +18,8 @@ Gateway API 리소스(`HTTPRoute`, `GRPCRoute`)의 hostname을 감지해 Cloudfl
 ## 2. 설치
 
 ```bash
+export DOMAIN=<your-domain>
+
 kubectl create secret generic cloudflare-api-token \
   -n external-dns \
   --from-literal=api-token='<your-cf-token>'
@@ -29,10 +31,9 @@ helm install external-dns external-dns/external-dns \
   -n external-dns \
   --version "~1.16.0" \
   -f values.yaml \
-  --set "domainFilters[0]=<your-domain>" \
+  --set "domainFilters[0]=${DOMAIN}" \
   --wait
 ```
-
 
 ## 3. 검증
 
@@ -40,7 +41,6 @@ helm install external-dns external-dns/external-dns \
 kubectl get pods -n external-dns
 kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=30
 ```
-
 
 DNS 자동 등록 확인 (Gateway/HTTPRoute가 이미 떠 있다면):
 
@@ -51,25 +51,24 @@ kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=50 | 
 ### Smoke test (`dns-smoketest.yaml`)
 
 기존 HTTPRoute가 없을 때 external-dns 동작을 격리 검증.
-`dns-smoketest.yaml`의 hostname을 본인 도메인으로 수정한 후:
 
 ```bash
-kubectl apply -f dns-smoketest.yaml
+sed -e "s|<your-domain>|${DOMAIN}|g" dns-smoketest.yaml | kubectl apply -f -
 ```
-
 
 1~2분 대기 후 검증:
 
 ```bash
 kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=30 | grep -E "CREATE|already up to date"
-nslookup edns-test.<your-domain> 1.1.1.1
+nslookup "edns-test.${DOMAIN}" 1.1.1.1
 ```
-![alt text](./images/DNS.png)
+
+![DNS](./images/DNS.png)
 
 정리 (sync policy로 DNS 레코드 자동 삭제 확인):
 
 ```bash
-kubectl delete -f dns-smoketest.yaml
+sed -e "s|<your-domain>|${DOMAIN}|g" dns-smoketest.yaml | kubectl delete -f -
 kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=10 | grep DELETE
 ```
 

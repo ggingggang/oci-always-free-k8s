@@ -12,7 +12,7 @@ spec:
     - name: public-gateway
       namespace: istio-system
   hostnames:
-    - edns-test.<your-domain.com>
+    - edns-test.<your-domain>
   rules:
     - matches:
         - path:
