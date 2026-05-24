@@ -1,0 +1,150 @@
+# terraform
+
+OCI 인프라 프로비저닝. VCN, OKE Basic Cluster, ARM Always Free 노드 풀, HeatWave MySQL Free.
+
+## 1. 전제 조건
+
+- OCI 유료 계정 (Pay As You Go / Universal Credits) — OKE는 Free Tier 계정 미지원
+- Terraform `>= 1.3.0`
+- OCI API Key (`.pem`) + fingerprint + tenancy/user OCID
+- SSH 공개키 (워커 노드 접근용)
+- OCI CLI — kubeconfig 생성 시 사용
+
+## 2. 설치
+
+### 2-1. 인증 정보 작성
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# tenancy_ocid, user_ocid, fingerprint, private_key_path, region,
+# compartment_ocid, ssh_authorized_keys, db_admin_password, allowed_cidr 채움
+```
+
+`private_key_path`는 `./secrets/oci-api-key.pem` 권장 (`secrets/`는 `.gitignore` 적용).
+
+### 2-2. 적용
+
+```bash
+terraform init
+terraform plan
+terraform apply
+```
+
+### 2-3. kubeconfig 생성
+
+```bash
+oci ce cluster create-kubeconfig \
+  --cluster-id "$(terraform output -raw oke_cluster_id)" \
+  --file ~/.kube/config \
+  --region <your-region> \
+  --token-version 2.0.0
+```
+
+## 3. 검증
+
+```bash
+terraform output
+kubectl get nodes -o wide
+kubectl get svc -A
+```
+
+노드 2개가 `Ready` 상태로 보이면 정상. `terraform output`의 `heatwave_ip`/`heatwave_port`로 MySQL 접속 가능 (워커 노드 또는 Bastion 경유).
+
+## 4. 결정
+
+### Basic Cluster
+
+Enhanced ($0.10/h) 대신 Basic 선택. 컨트롤 플레인 자체 무료, 워커는 A1.Flex Always Free 쿼터 사용 → **클러스터 전체 0원**. 단 Virtual Nodes / OKE Add-ons / 컨트롤 플레인 SLA 미지원.
+
+### Flannel Overlay CNI
+
+`cluster_pod_network_options.cni_type = "FLANNEL_OVERLAY"`. Basic Cluster는 VCN-Native CNI 미지원이라 Flannel 강제. Pod CIDR `10.244.0.0/16`, Service CIDR `10.96.0.0/16`. 추후 Cilium chaining (Hubble / NetworkPolicy)을 위에 얹는 구조.
+
+### ARM A1.Flex × 2 노드
+
+`VM.Standard.A1.Flex`, 노드당 2 OCPU / 12 GB. 2노드 = 4 OCPU / 24 GB → Always Free 한도 정확히 일치. AMD VM (1/8 OCPU, 1 GB) 대비 ARM이 24배 더 큰 메모리 → k8s 워커 최적.
+
+### 이미지 동적 조회 (regex)
+
+`Oracle-Linux-8\.\d+-aarch64-.*` 정규식으로 리전별 최신 ARM 이미지 조회. region마다 OCID가 달라 하드코딩 불가. `sort_by=TIMECREATED DESC`로 가장 최근 빌드 선택.
+
+### NSG 기반 admin 접근 제한
+
+`oci_core_network_security_group.public_access` — `allowed_cidr` 만 모든 포트 허용. OKE API endpoint(`endpoint_nsg_ids`) + LoadBalancer (`oci-load-balancer-nsg-ids` annotation으로 k8s Service에 부여) 양쪽에 부착. Security List가 `0.0.0.0/0` 허용해도 NSG가 한 번 더 거름. CIDR 변경은 `terraform apply` 한 번으로 동기.
+
+### Service Gateway "All Services" 명시적 선택
+
+```hcl
+all_services = [
+  for s in data.oci_core_services.all.services :
+  s if startswith(s.name, "All ")
+][0]
+```
+
+`services[0]` 인덱스는 리전마다 순서가 달라 Object Storage 한정 SGW가 잡힐 수 있음. `"All <Region> Services in Oracle Services Network"` 를 이름 prefix로 명시적 필터.
+
+### 4-subnet 분리
+
+| Subnet | CIDR | 유형 | 용도 |
+|--------|------|------|------|
+| subnet-oke-api | 10.0.0.0/28 | Public | OKE API endpoint |
+| subnet-public | 10.0.1.0/28 | Public | OCI Load Balancer |
+| subnet-workers | 10.0.102.0/24 | Private | Worker nodes |
+| subnet-db | 10.0.201.0/28 | Private | HeatWave MySQL |
+
+DB가 Service Gateway 경유 OCI 내부 서비스(패치/백업)에 접근 — 인터넷 비노출. 워커는 NAT Gateway로 image pull / OS 업데이트.
+
+### HeatWave MySQL.Free
+
+`MySQL.Free` shape, 50GB. AlwaysFree 1 인스턴스 한도. `deletion_policy.is_delete_protected = false` — terraform destroy 시 함께 제거. 운영 데이터 유의.
+
+### terraform 모듈 분리
+
+`networking` → `oke` / `iam` / `database` 의존. 모듈별 책임 명확, 부분 적용 가능.
+
+```
+networking ──┬──► oke
+             ├──► iam (NSG는 vcn_id만 필요)
+             └──► database
+```
+
+## 5. 주의 사항
+
+### A1 capacity error
+
+OCI 리전별 ARM 노드 가용성 부족 시 `Out of host capacity` 에러. 적용 실패 시 재시도하거나 다른 AD (`availability_domain`) 시도. `local.availability_domain = ...availability_domains[0].name` 이라 AD 변경은 코드 수정 필요.
+
+### `allowed_cidr` 변경 시 NSG drift
+
+CIDR 변경 후 `terraform apply` 즉시 NSG가 갱신됨. 이전 IP에서 활성 연결 중인 kubectl 세션이 끊김. 작업 IP 바뀌면 사전 갱신.
+
+### kubernetes_version 리전 가용성
+
+default `v1.34.2`가 리전에서 미지원일 수 있음. 적용 전 `oci ce cluster-options get --cluster-option-id all`로 가용 버전 확인.
+
+### terraform state
+
+현재 로컬 state. 팀 운영 또는 다중 환경 시 OCI Object Storage backend로 이관 권고:
+
+```hcl
+terraform {
+  backend "s3" {  # OCI Object Storage S3 호환
+    bucket   = "<your-state-bucket>"
+    key      = "oci-terraform.tfstate"
+    region   = "<your-region>"
+    endpoint = "https://<namespace>.compat.objectstorage.<region>.oraclecloud.com"
+  }
+}
+```
+
+### db_admin_password rotation
+
+`sensitive = true`로 plan/apply 출력에서 마스킹. tfvars 자체는 `.gitignore` 적용. 회전은 OCI 콘솔에서 직접 변경 후 `terraform refresh` 또는 변수만 갱신해서 in-place update.
+
+### secrets/ 폴더
+
+`secrets/oci-api-key.pem`, `secrets/bastion.pem` 등 키 자산은 `*.pem`/`*.ppk`/`*.pub` gitignore 패턴으로 추적 제외. 본 폴더는 컨벤션이며 임의 경로 사용 가능.
+
+### 모듈 그래프와 destroy 순서
+
+`terraform destroy`는 의존 역순으로 자동 처리. 단 HeatWave MySQL은 삭제까지 5~10분 소요. 중간에 중단하면 stuck 가능 → 완전 종료까지 대기.

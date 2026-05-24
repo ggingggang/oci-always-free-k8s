@@ -1,12 +1,27 @@
-# OCI Kubernetes Cluster (Always Free)
+# OCI Kubernetes (Always Free)
 
-Kubernetes cluster provisioned entirely with **Always Free resources** in an OCI **paid account** (Pay As You Go / Universal Credits).
+A production-shaped Kubernetes platform on **Always Free** resources in an OCI paid account (Pay As You Go / Universal Credits).
 
 **[📖 한국어 문서](./docs/README-KR.md)**
 
-> **This is NOT Free Tier.**
-> Free Tier provides limited trial credits (30 days).
-> This project uses only Always Free resources permanently included in paid accounts, so **there are no charges** for normal usage.
+> **Not Free Tier.**
+> Free Tier is a 30-day credit trial. This project uses Always Free resources that remain free indefinitely on a PAYG account — normal usage incurs **no charges**.
+
+## Stack
+
+| Layer | Components | Status |
+|-------|-----------|--------|
+| IaC | Terraform | done |
+| Container | OKE Basic, Flannel Overlay, containerd | done |
+| Mesh / Gateway | Gateway API, Istio Ambient, NLB | done |
+| DNS | external-dns + Cloudflare | done |
+| TLS | cert-manager + Let's Encrypt (DNS-01) | done |
+| GitOps | ArgoCD, Jenkins, GHCR | planned |
+| Observability | kube-prometheus-stack, Thanos, Loki, Alloy, Tempo, Kiali | planned |
+| Security | OpenBao (Vault), Trivy, Kyverno, cosign, PSA, NetworkPolicy | planned |
+| App infra | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | planned |
+| DR / Backup | Velero, OCI Block Volume Backup, Vault Raft Snapshot | planned |
+| Test | k6 | planned |
 
 ## Architecture
 
@@ -20,8 +35,8 @@ Kubernetes cluster provisioned entirely with **Always Free resources** in an OCI
             │  10.0.1.0/28         │
             │                      │
             │  ┌────────────────┐  │
-            │  │  OCI LB        │  │  ← provisioned by OKE (Service type: LoadBalancer)
-            │  │  (10Mbps)      │  │
+            │  │  OCI NLB       │  │  ← provisioned by Gateway API (Istio reconcile)
+            │  │  (TCP L4)      │  │
             │  └──────┬─────────┘  │
             └─────────┼────────────┘
                       │ NodePort (30000-32767)
@@ -33,14 +48,14 @@ Kubernetes cluster provisioned entirely with **Always Free resources** in an OCI
   │                 │ │  │                           │
   │  ┌───────────┐  │ │  │  ┌─────────────────────┐  │
   │  │ OKE       │◄─┼─┘  │  │  Node Pool          │  │
-  │  │ Control   │◄─┼────┼──│  2x VM.Standard     │  │
-  │  │ Plane API │  │    │  │    .A1.Flex          │  │
-  │  │ (managed) │  │    │  │  2 OCPU / 12GB each  │  │
+  │  │ Control   │◄─┼────┼──│  2× VM.Standard     │  │
+  │  │ Plane API │  │    │  │     .A1.Flex        │  │
+  │  │ (managed) │  │    │  │  2 OCPU / 12GB each │  │
   │  └───────────┘  │    │  └──────────┬──────────┘  │
   └─────────────────┘    └─────────────┼─────────────┘
                                        │
                                [ NAT Gateway ]
-                               [ Svc Gateway ]
+                               [ Service GW  ]
                                        │
                            ┌───────────┴────────┐
                            │  subnet-db         │
@@ -53,181 +68,113 @@ Kubernetes cluster provisioned entirely with **Always Free resources** in an OCI
                            └────────────────────┘
 ```
 
-## Always Free Resource Usage
+## Always Free Usage
 
 | Resource | Current Usage | Always Free Limit | Remaining |
 |----------|---------------|-------------------|-----------|
-| VM.Standard.A1.Flex | 4 OCPU / 24GB (2 nodes × 2C/12GB) | 4 OCPU / 24GB | At limit |
-| OKE Basic Cluster | 1x (free control plane) | — | — |
-| MySQL HeatWave | 1x, 50GB | 1x, 50GB | — |
-| Load Balancer | 1x, 10Mbps (via OKE Service) | 1x, 10Mbps | — |
-| VCN | 1x | 2x | 1x |
+| VM.Standard.A1.Flex | 4 OCPU / 24 GB (2 nodes) | 4 OCPU / 24 GB | At limit |
+| OKE Basic Cluster | 1× (free control plane) | — | — |
+| MySQL HeatWave | 1×, 50 GB | 1×, 50 GB | — |
+| Network Load Balancer | 1× (Istio Gateway, L4) | 1× | — |
+| Flexible Load Balancer | 0× | 1×, 10 Mbps | 1× |
+| VCN | 1× | 2× | 1× |
 
-> OKE Basic Cluster control plane is free. Worker nodes use the Always Free A1.Flex quota.
-> A PAYG (Pay As You Go) account is required — OKE is not available in Free Tier accounts.
+> OKE Basic Cluster control plane is free. Workers use the Always Free A1.Flex quota.
+> A PAYG account is required — OKE is not available in Free Tier.
 
-## Directory Structure
+Full catalog: [`docs/summary.md`](./docs/summary.md).
+
+## Directory
 
 ```
 .
-├── README.md
-├── docs/
-│   ├── README-KR.md          # 한국어 문서
-│   ├── architecture.html     # Infrastructure architecture diagram
-│   └── summary.md            # Always Free resource summary
-└── terraform/
-    ├── main.tf                   # Module calls and dependencies
-    ├── provider.tf               # OCI Provider configuration
-    ├── variables.tf              # Root variables
-    ├── outputs.tf                # Root outputs
-    ├── terraform.tfvars.example  # Example configuration
-    ├── modules/
-    │   ├── networking/           # VCN, Subnets, Route Tables, Security Lists, Bastion
-    │   ├── oke/                  # OKE Basic Cluster + ARM Node Pool + dynamic image lookup
-    │   │   └── scripts/
-    │   │       └── node_pool_init.sh  # Cloud-init bootstrap script
-    │   ├── database/             # HeatWave MySQL Free
-    │   └── iam/                  # (Reserved) Dynamic Group, Policy
+├── terraform/                  # OCI infra (VCN, OKE, MySQL, IAM/NSG)
+│   ├── modules/{networking,oke,database,iam}/
+│   └── README.md
+├── kubernetes/                 # K8s manifests
+│   ├── infra/                  # Bootstrap infra
+│   │   ├── namespaces/
+│   │   ├── gateway-api/
+│   │   ├── istio/
+│   │   ├── external-dns/
+│   │   ├── cert-manager/
+│   │   └── README.md
+│   ├── test/                   # One-shot validation
+│   └── README.md
+└── docs/
+    ├── README-KR.md            # Korean mirror
+    ├── summary.md              # Always Free catalog (EN)
+    └── summary-kr.md           # Always Free catalog (KR)
 ```
 
-## Dependency Graph
+## Quick Start
 
-```
-networking ──┬──► oke
-             │
-             └──► database
-```
-
-## Subnet Layout
-
-| Subnet | CIDR | Type | Purpose |
-|--------|------|------|---------|
-| subnet-oke-api | 10.0.0.0/28 | Public | OKE API endpoint |
-| subnet-public | 10.0.1.0/28 | Public | OCI Load Balancer (Service LB) |
-| subnet-workers | 10.0.102.0/24 | Private | OKE worker nodes |
-| subnet-db | 10.0.201.0/28 | Private | HeatWave MySQL |
-
-## Network Policy
-
-| Source | Destination | Protocol | Port |
-|--------|-------------|----------|------|
-| Internet | subnet-oke-api | TCP | 6443 (kubectl) |
-| Internet | subnet-public | TCP | 80, 443 |
-| subnet-oke-api | subnet-workers | ALL | Control plane → workers |
-| subnet-oke-api | OCI Services (SGW) | TCP | 443 |
-| subnet-public (LB) | subnet-workers | TCP | 30000–32767 (NodePort) |
-| subnet-public (LB) | subnet-workers | TCP | 10256 (health check) |
-| subnet-workers | subnet-oke-api | TCP | 6443, 12250 |
-| subnet-workers ↔ subnet-workers | — | ALL | Pod-to-Pod (Flannel VXLAN) |
-| subnet-workers | subnet-db | TCP | 3306 (MySQL) |
-| subnet-workers | Internet (NAT) | ALL | Image pull, updates |
-| subnet-workers | OCI Services (SGW) | ALL | OCI internal services |
-
-## Prerequisites
-
-- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
-- [OCI CLI](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) (for kubeconfig setup)
-- OCI paid account (Pay As You Go or Universal Credits)
-- OCI API Key (.pem)
-- SSH key pair
-
-## Usage
-
-### 1. Create Configuration
-
-```hcl
-# terraform.tfvars
-tenancy_ocid          = "ocid1.tenancy.oc1..aaaa..."
-user_ocid             = "ocid1.user.oc1..aaaa..."
-fingerprint           = "aa:bb:cc:dd:ee:ff:..."
-private_key_path      = "./secrets/oci-api-key.pem"
-region                = "ap-tokyo-1"
-compartment_ocid      = "ocid1.compartment.oc1..aaaa..."
-ssh_authorized_keys   = "ssh-rsa AAAA... user@host"
-db_admin_password     = "MyStr0ng#Pass!"
-kubernetes_version    = "v1.34.2"
-```
-
-> The Oracle Linux ARM node image is automatically resolved for your region.
-> Override `kubernetes_version` if the default is not available in your OKE region.
-
-### 2. Deploy
+### 1. Provision OCI infrastructure
 
 ```bash
 cd terraform
+cp terraform.tfvars.example terraform.tfvars   # fill in OCIDs, region, SSH key, etc.
 terraform init
-terraform plan
 terraform apply
 ```
 
-### 3. Access the Cluster
+Details: [`terraform/README.md`](./terraform/README.md).
+
+### 2. Configure kubectl
 
 ```bash
-# Configure kubectl (run after apply)
 oci ce cluster create-kubeconfig \
-  --cluster-id <oke_cluster_id> \
+  --cluster-id "$(terraform output -raw oke_cluster_id)" \
   --file ~/.kube/config \
-  --region ap-tokyo-1 \
+  --region <your-region> \
   --token-version 2.0.0
 
 kubectl get nodes
 ```
 
-### 4. Destroy
+### 3. Bootstrap Kubernetes infra
 
-```bash
-cd terraform
-terraform destroy
-```
+Install in order: `namespaces` → `gateway-api` → `istio` (core) → `external-dns` → `cert-manager` → `istio` (Gateway HTTPS).
 
-## Variables
+Details: [`kubernetes/infra/README.md`](./kubernetes/infra/README.md).
 
-| Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `tenancy_ocid` | string | Yes | — | OCI tenancy OCID |
-| `user_ocid` | string | Yes | — | OCI user OCID |
-| `fingerprint` | string | Yes | — | API Key fingerprint |
-| `private_key_path` | string | Yes | — | API Key PEM file path |
-| `region` | string | Yes | — | OCI region |
-| `compartment_ocid` | string | Yes | — | Target compartment OCID |
-| `ssh_authorized_keys` | string | Yes | — | Worker node SSH public key |
-| `db_admin_password` | string | Yes | — | MySQL admin password (sensitive) |
-| `kubernetes_version` | string | No | `"v1.34.2"` | Kubernetes version |
+## Network Layout
 
-## Outputs
+| Subnet | CIDR | Type | Purpose |
+|--------|------|------|---------|
+| subnet-oke-api | 10.0.0.0/28 | Public | OKE API endpoint |
+| subnet-public | 10.0.1.0/28 | Public | OCI Load Balancer / NLB |
+| subnet-workers | 10.0.102.0/24 | Private | Worker nodes |
+| subnet-db | 10.0.201.0/28 | Private | HeatWave MySQL |
 
-| Output | Description |
-|--------|-------------|
-| `vcn_id` | VCN OCID |
-| `subnet_oke_api_id` | OKE API subnet OCID |
-| `subnet_pub_id` | Public (LB) subnet OCID |
-| `subnet_workers_id` | Worker subnet OCID |
-| `subnet_db_id` | DB subnet OCID |
-| `oke_cluster_id` | OKE cluster OCID |
-| `oke_cluster_endpoint` | OKE API public endpoint |
-| `oke_node_pool_id` | Node pool OCID |
-| `heatwave_ip` | MySQL connection IP |
-| `heatwave_port` | MySQL connection port |
+Security list + NSG rules: see `terraform/modules/networking` and `terraform/modules/iam`.
 
 ## Network Bandwidth
 
 | Link | Bandwidth | Notes |
 |------|-----------|-------|
-| A1 Instance (per OCPU) | 1 Gbps / OCPU | 2 OCPU node = 2 Gbps |
-| Load Balancer | 10 Mbps | Always Free Flexible LB fixed |
-| Outbound Data Transfer | 10 TB/month free | Charged beyond limit; inbound is free |
+| A1 Instance (per OCPU) | 1 Gbps | 2 OCPU node = 2 Gbps |
+| Network Load Balancer | A1 quota bound | L4 passthrough, no fixed cap |
+| Flexible Load Balancer | 10 Mbps | (unused; if used, this is the bottleneck) |
+| Outbound | 10 TB/month free | Charged beyond limit; inbound is free |
 
-- The LB is the bottleneck at 10 Mbps for external traffic.
-- Internal cluster traffic (worker ↔ worker, worker ↔ DB) is intra-VCN and uses full instance bandwidth.
+Intra-VCN traffic (worker↔worker, worker↔DB) uses full instance bandwidth.
 
-## OKE Basic Cluster Limitations
+## OKE Basic vs Enhanced
 
-| Feature | Basic Cluster | Enhanced Cluster |
-|---------|--------------|-----------------|
+| Feature | Basic | Enhanced |
+|---------|-------|----------|
 | Price | **Free** | $0.10/hr |
 | Virtual Nodes | ✗ | ✓ |
 | OKE Add-ons | ✗ | ✓ |
 | Control Plane SLA | ✗ | ✓ |
-| CNI | Flannel Overlay | Flannel / OCI VCN-Native |
+| CNI | Flannel Overlay | Flannel / VCN-Native |
 
-> For personal projects and non-production workloads, Basic Cluster is sufficient.
+Basic Cluster is sufficient for personal projects and non-production workloads.
+
+## Conventions
+
+- **Placeholders**: `<your-domain>`, `<your-email>`, `<your-cf-token>`, `<your-region>` — substituted at apply time via `sed | kubectl apply -f -`. See each component README.
+- **Secrets**: `*.env`, `*.local.*`, `*.tfvars`, `*.pem`, `*.ppk`, `*.pub` are gitignored. Personal values never enter git.
+- **README structure**: every component folder follows 5 sections — Prerequisites / Setup / Verification / Decisions / Notes.
+- **Helm versions**: pinned via SemVer tilde (`~X.Y.0`) — patch-level auto-follow, minor requires explicit bump.
