@@ -13,6 +13,10 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 *.auto.tfvars
+*.env
+
+# local
+*.local.*
 
 # SSH / OCI key
 *.pem
