@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-smoketest
+  namespace: default
+  labels:
+    app.kubernetes.io/name: db-smoketest
+    app.kubernetes.io/component: database-verification
+    app.kubernetes.io/managed-by: manual
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: mysql-client
+      image: docker.io/mysql:8.0
+      command: ["sh", "-c"]
+      args:
+        - |
+          set +e
+          echo "=== probe: TCP + handshake + auth + TLS ==="
+          mysql \
+            -h "$DB_HOST" -P "$DB_PORT" \
+            -u "$DB_USER" \
+            --connect-timeout=10 \
+            --ssl-mode=REQUIRED \
+            -e "SELECT
+                  @@version       AS server_version,
+                  @@hostname      AS server_host,
+                  NOW()           AS server_now,
+                  CURRENT_USER()  AS auth_as,
+                  @@have_ssl      AS tls_supported,
+                  @@version_compile_os AS os;" 2>&1
+          rc=$?
+          echo "=== exit=$rc ==="
+          echo "=== probe: schema + privileges ==="
+          mysql \
+            -h "$DB_HOST" -P "$DB_PORT" \
+            -u "$DB_USER" \
+            --connect-timeout=10 \
+            --ssl-mode=REQUIRED \
+            -e "SHOW DATABASES; SHOW GRANTS FOR CURRENT_USER();" 2>&1
+          rc=$?
+          echo "=== exit=$rc ==="
+          sleep 3600
+      env:
+        - name: DB_HOST
+          value: "<heatwave-private-ip>"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-smoketest-creds
+              key: username
+        - name: MYSQL_PWD
+          valueFrom:
+            secretKeyRef:
+              name: db-smoketest-creds
+              key: password
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          memory: 128Mi

@@ -20,7 +20,8 @@ kubernetes/
 │   └── jenkins/          # JCasC + emptyDir, 동적 agent (+ Kaniko podTemplate in build NS)
 └── test/                 # 일회성 검증 자산
     ├── networking/       # NLB smoke test
-    └── storage/          # Block Volume CSI smoke test
+    ├── storage/          # Block Volume CSI smoke test
+    └── database/         # HeatWave MySQL 연결 smoke test
 ```
 
 상세 설치 순서 + 컴포넌트 의존 관계: [`infra/README.md`](./infra/README.md).
