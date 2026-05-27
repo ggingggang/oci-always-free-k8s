@@ -15,6 +15,8 @@ kubernetes/
 │   ├── external-dns/     # HTTPRoute hostnames → Cloudflare DNS
 │   ├── cert-manager/     # LE DNS-01 + 와일드카드 Certificate
 │   └── README.md         # 전체 그림 + 설치 순서
+├── platform/             # CI/CD · 관측 · 보안 등 플랫폼 컴포넌트
+│   └── jenkins/          # JCasC + emptyDir, 동적 agent
 └── test/                 # 일회성 검증 자산
     ├── networking/       # NLB smoke test
     └── storage/          # Block Volume CSI smoke test
@@ -36,5 +38,5 @@ kubernetes/
 
 ## 예정 추가
 
-- `platform/` — argocd, jenkins, monitoring (kube-prometheus / Loki / Tempo / Grafana), openbao
+- `platform/` — argocd, monitoring (kube-prometheus / Loki / Tempo / Grafana), openbao (jenkins는 도입 완료)
 - `apps/` 또는 별도 레포 — 실제 워크로드
