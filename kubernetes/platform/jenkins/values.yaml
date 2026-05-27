@@ -1,0 +1,74 @@
+controller:
+  persistence:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+
+  runAsUser: 1000
+  fsGroup: 1000
+
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop: ["ALL"]
+
+  serviceType: ClusterIP
+  servicePort: 8080
+
+  jenkinsUrl: "https://jenkins.<your-domain>/"
+  jenkinsAdminEmail: "<your-email>"
+
+  numExecutors: 0
+
+  installPlugins:
+    - kubernetes
+    - workflow-aggregator
+    - git
+    - configuration-as-code
+    - job-dsl
+    - github
+    - github-branch-source
+    - credentials-binding
+    - pipeline-stage-view
+
+  installLatestPlugins: true
+
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      welcome-config: |
+        jenkins:
+          systemMessage: "Jenkins managed via JCasC. Source of truth = git."
+
+agent:
+  enabled: true
+  containerCap: 2
+
+  image:
+    repository: jenkins/inbound-agent
+    tag: latest-alpine
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+serviceAccount:
+  create: false
+  name: jenkins
+
+rbac:
+  create: false
+
+prometheus:
+  enabled: false
