@@ -24,9 +24,11 @@ kubernetes/
 
 실제로 작성된 RBAC만 본 표에 박힘. 새 컴포넌트의 `rbac.yaml` 작성 시 본 표에 행 추가 (CLAUDE.md 컨벤션).
 
-| 컴포넌트 | SA NS | 권한 scope | Kind | 위치 |
+| 컴포넌트 | SA | 권한 scope | Kind | 위치 |
 |---------|-------|----------|------|------|
-| Jenkins | `cicd` | 자기 NS Pod/configmap/secret(read)/events (agent Pod 관리) | Role + RoleBinding | `platform/jenkins/rbac.yaml` |
+| Jenkins controller | `cicd/jenkins` | `cicd` NS Pod/configmap/secret(read)/events (agent 관리) | Role + RoleBinding | `platform/jenkins/rbac.yaml` |
+| Jenkins → build | `cicd/jenkins` | `build` NS Pod CRUD (Kaniko 빌드 Pod 관리, cross-NS) | Role + RoleBinding | `platform/jenkins/rbac.yaml` |
+| Kaniko 빌드 | `build/kaniko-builder` | 권한 0건 (`automountServiceAccountToken: false`). Pod 신원 전용 | SA only | `platform/jenkins/rbac.yaml` |
 
 ## 3. 검증
 

@@ -19,7 +19,8 @@ kubectl apply -f namespaces.yaml
 | `istio-system` | Istio 컨트롤 플레인 (istiod, ztunnel, istio-cni, Gateway) |
 | `cert-manager` | cert-manager 전용 |
 | `external-dns` | external-dns 전용 |
-| `cicd` | ArgoCD, Jenkins |
+| `cicd` | ArgoCD, Jenkins (PSA `enforce=baseline`) |
+| `build` | Kaniko 빌드 Pod 전용 (PSA `enforce=privileged`) |
 | `monitoring` | kube-prometheus-stack, Thanos, Loki, Grafana, Tempo, Kiali |
 | `vault` | OpenBao |
 | `app` | 워크로드 (PSA `enforce=restricted`) |
@@ -32,7 +33,12 @@ kubectl get ns app -o jsonpath='{.metadata.labels}' | jq .
 kubectl get ns -L pod-security.kubernetes.io/enforce
 ```
 
-`app` 네임스페이스에만 `pod-security.kubernetes.io/enforce=restricted` 라벨이 박혀 있어야 정상.
+PSA enforce 적용 네임스페이스:
+
+- `app` → `restricted`
+- `cicd` → `baseline` (Jenkins/ArgoCD 는 root 불필요, agent 도 non-root)
+- `build` → `privileged` (Kaniko 가 root + capability 요구)
+- 그 외 인프라 NS → enforce 미적용 (ztunnel/istio-cni 권한 요구)
 
 ## 4. 결정
 
@@ -40,11 +46,16 @@ kubectl get ns -L pod-security.kubernetes.io/enforce
 
 dev/staging/prod 멀티 네임스페이스 분리는 OCI Always Free 24GB RAM 제약에서 비현실적 (각 환경 stack을 N배). 단일 `app` 네임스페이스 + LE staging/prod ClusterIssuer로 환경 분리 역할 흡수.
 
-### PSA enforce는 app에만 적용
+### PSA 라벨 분배
 
-`istio-system`, `vault`, `cert-manager`, `external-dns` 등 인프라 네임스페이스는 host network / privileged container / hostPath 등 권한 요구 컴포넌트가 들어옴. enforce 라벨 박으면 ambient ztunnel + istio-cni가 거부됨.
+`app` 만이 아니라 `cicd`/`build` 도 PSA enforce 적용. 라벨 strength 분배:
 
-워크로드는 `app` 한정 → 거기에만 enforce 부여. 인프라 네임스페이스는 명시적으로 enforce 미적용.
+- `app` → `restricted`: 워크로드. distroless + non-root + read-only FS 강제
+- `cicd` → `baseline`: Jenkins/ArgoCD controller. 둘 다 non-root 운영 가능하지만 `baseline` 까지만 — chart 가 가끔 capability 요구 (예: net_bind_service)
+- `build` → `privileged`: Kaniko 가 chroot/extract 위해 root + capabilities 필요. enforce 제거 ❌, 명시적으로 `privileged` 부여해서 *의도된 격리* 표현
+- `istio-system`/`vault`/`cert-manager`/`external-dns` → enforce 미적용. ambient ztunnel + istio-cni 가 host network / hostPath 등 권한 요구
+
+핵심: Kaniko 가 root 필요하다고 `cicd` 전체 enforce 풀지 않음 — `build` 로 분리해서 *root 권한이 도달하는 NS* 를 최소화.
 
 ### 명시적 네임스페이스 선언
 
