@@ -16,6 +16,7 @@ kubernetes/
 │   ├── cert-manager/     # LE DNS-01 + 와일드카드 Certificate
 │   └── README.md         # 전체 그림 + 설치 순서
 ├── platform/             # CI/CD · 관측 · 보안 등 플랫폼 컴포넌트
+│   ├── argocd/           # GitOps 컨트롤 플레인 (helm + HTTPRoute)
 │   └── jenkins/          # JCasC + emptyDir, 동적 agent
 └── test/                 # 일회성 검증 자산
     ├── networking/       # NLB smoke test
@@ -26,7 +27,7 @@ kubernetes/
 
 ## 적용 모델
 
-현재는 helm install + `sed | kubectl apply -f -` 수동 (멱등). ArgoCD 도입 시점에 helm 릴리즈 adopt + Application 매니페스트로 전환. 그 시점에 RBAC 컨벤션 + ApplicationSet도 함께.
+helm install + `sed | kubectl apply -f -` 수동 (멱등). ArgoCD 는 helm release 로만 유지 — 본 레포(인프라/OSS 템플릿)를 ArgoCD 가 sync 하지 않음. 앱 sync 는 향후 별도 deploy repo 대상.
 
 수동 적용 흐름은 cold-start / DR 복구 자산으로 유지.
 
@@ -38,5 +39,5 @@ kubernetes/
 
 ## 예정 추가
 
-- `platform/` — argocd, monitoring (kube-prometheus / Loki / Tempo / Grafana), openbao (jenkins는 도입 완료)
+- `platform/` — monitoring (kube-prometheus / Loki / Tempo / Grafana), openbao (argocd, jenkins 도입 완료)
 - `apps/` 또는 별도 레포 — 실제 워크로드
