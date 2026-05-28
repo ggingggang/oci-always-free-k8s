@@ -9,7 +9,7 @@ spec:
       namespace: istio-system
       sectionName: https-wildcard
   hostnames:
-    - jenkins.<your-domain>
+    - jenkins.ggang.cloud
   rules:
     - backendRefs:
         - name: jenkins

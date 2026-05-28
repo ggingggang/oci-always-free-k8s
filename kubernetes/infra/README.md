@@ -44,21 +44,20 @@ Cloudflare API Token은 컴포넌트별 분리 발급 권장 (cert-manager/exter
 
 ### Placeholder + sed 패턴
 
-매니페스트의 사적 값은 `<your-*>` placeholder로 박고 apply 시 sed로 치환.
+apex 도메인 + admin 이메일은 git 박힘 (`ggang.cloud` / `admin@ggang.cloud`). secret 성격 값만 `<your-*>` placeholder + Secret 생성 시 직접 주입.
 
 ```bash
-export DOMAIN=<your-domain>
-sed -e "s|<your-domain>|${DOMAIN}|g" some.yaml | kubectl apply -f -
+kubectl create secret generic cloudflare-api-token \
+  -n cert-manager \
+  --from-literal=api-token='<your-cf-token>'
 ```
 
 사용하는 placeholder:
 
 | 토큰 | 의미 |
 |------|------|
-| `<your-domain>` | apex 도메인 (예: `example.com`) |
-| `<your-email>` | ACME 등록 이메일 |
 | `<your-cf-token>` | Cloudflare API Token (Secret 생성 시) |
-| `<your-zone>` | Cloudflare zone (대부분 apex 도메인과 동일) |
+| `<your-github-user>` / `<your-ghcr-write-token>` | GHCR push 자격 (Jenkins 빌드용 Secret 생성 시) |
 
 ### 비밀값
 

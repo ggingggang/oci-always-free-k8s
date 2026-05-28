@@ -172,9 +172,40 @@ Intra-VCN traffic (worker↔worker, worker↔DB) uses full instance bandwidth.
 
 Basic Cluster is sufficient for personal projects and non-production workloads.
 
+## Fork Setup
+
+For fork users — swap hard-coded values to your own.
+
+### Change the apex domain
+
+`init.sh` replaces every `ggang.cloud` occurrence across yaml/markdown/scripts. `admin@ggang.cloud` is rewritten as a side effect.
+
+```bash
+./init.sh your-domain.example
+git diff --stat
+```
+
+GNU sed assumed (Linux / git-bash on Windows). macOS users: install `gnu-sed` via Homebrew or run the equivalent `sed -i ''` manually.
+
+### Create `kubernetes/.env`
+
+Holds tokens that never enter git (`*.env` is gitignored). Source it before running any Secret-creating command.
+
+```bash
+cat > kubernetes/.env <<EOF
+export jenkins=<jenkins-admin-token-or-leave-empty-on-first-install>
+export GHCR_TOKEN=<your-ghcr-write-token>
+export GHCR_USER=<your-github-user>
+EOF
+
+source kubernetes/.env
+```
+
+Cloudflare API tokens are not in `.env` — generated per-component and passed inline to `kubectl create secret` (see `kubernetes/infra/cert-manager/`, `kubernetes/infra/external-dns/`).
+
 ## Conventions
 
-- **Placeholders**: `<your-domain>`, `<your-email>`, `<your-cf-token>`, `<your-region>` — substituted at apply time via `sed | kubectl apply -f -`. See each component README.
+- **Placeholders**: `<your-cf-token>`, `<your-region>`, `<your-github-user>`, `<your-ghcr-write-token>` — secret-grade values, injected at Secret creation time. Apex domain (`ggang.cloud`) and admin email (`admin@ggang.cloud`) are hard-coded in git. See each component README.
 - **Secrets**: `*.env`, `*.local.*`, `*.tfvars`, `*.pem`, `*.ppk`, `*.pub` are gitignored. Personal values never enter git.
 - **README structure**: every component folder follows 5 sections — Prerequisites / Setup / Verification / Decisions / Notes.
 - **Helm versions**: pinned via SemVer tilde (`~X.Y.0`) — patch-level auto-follow, minor requires explicit bump.

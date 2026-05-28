@@ -21,8 +21,6 @@
 ## 2. 설치
 
 ```bash
-export DOMAIN=<your-domain>
-export EMAIL=<your-email>
 export GHCR_USER=<your-github-user>
 export GHCR_TOKEN=<your-ghcr-write-token>
 
@@ -37,10 +35,9 @@ kubectl create secret docker-registry ghcr-push \
 helm repo add jenkins https://charts.jenkins.io
 helm repo update
 
-sed -e "s|<your-domain>|${DOMAIN}|g" -e "s|<your-email>|${EMAIL}|g" values.yaml \
-  | helm install jenkins jenkins/jenkins -n cicd --version "~5.8.0" -f - --wait
+helm install jenkins jenkins/jenkins -n cicd --version "~5.8.0" -f values.yaml --wait
 
-sed -e "s|<your-domain>|${DOMAIN}|g" httproute.yaml | kubectl apply -f -
+kubectl apply -f httproute.yaml
 ```
 
 `ghcr-push` Secret 은 `build` NS 에 존재해야 함 (Kaniko podTemplate 이 마운트). GHCR token scope: `write:packages` + `read:packages`. 향후 Vault Agent Injector 또는 GitHub App Installation Token 으로 이관 예정.
@@ -67,7 +64,7 @@ kubectl exec -n cicd jenkins-0 -c jenkins -- ls /var/jenkins_home/casc_configs/
 ```
 
 브라우저:
-- `https://jenkins.<your-domain>` 접근 → 로그인 → JCasC seed에 박힌 system message 확인
+- `https://jenkins.ggang.cloud` 접근 → 로그인 → JCasC seed에 박힌 system message 확인
 - Manage Jenkins → Configuration as Code → "Reload existing configuration" 동작 확인
 
 **선언성 검증 — pod 재시작 후 동일 상태**:
@@ -81,8 +78,8 @@ kubectl wait --for=condition=ready pod/jenkins-0 -n cicd --timeout=180s
 DNS 자동 등록 (external-dns + Cloudflare):
 
 ```bash
-nslookup "jenkins.${DOMAIN}" 1.1.1.1
-curl -vIk "https://jenkins.${DOMAIN}"
+nslookup "jenkins.ggang.cloud" 1.1.1.1
+curl -vIk "https://jenkins.ggang.cloud"
 ```
 
 Kaniko podTemplate 적용 확인:
@@ -139,7 +136,7 @@ CVE 발생 또는 chart bump 시:
    kubectl exec -n cicd jenkins-0 -c jenkins -- \
      ls /var/jenkins_home/plugins | awk -F'.jpi' '{print $1}' | sort -u
    ```
-   또는 `https://jenkins.<domain>/script` 에서:
+   또는 `https://jenkins.ggang.cloud/script` 에서:
    ```groovy
    Jenkins.instance.pluginManager.plugins.each { println "${it.shortName}:${it.version}" }
    ```
@@ -230,7 +227,7 @@ manifest commit 패턴: Jenkins 는 *k8s API 직접 호출 ❌*, *git push (앱 
 
 ### HTTPRoute — https-wildcard listener attach
 
-`jenkins.<your-domain>` 으로 노출. `public-gateway` 의 `https-wildcard` listener (cert SAN의 `*.<your-domain>` 매칭). HTTP→HTTPS redirect는 `../../infra/istio/http-redirect.yaml` 이 catch-all 처리.
+`jenkins.ggang.cloud` 으로 노출. `public-gateway` 의 `https-wildcard` listener (cert SAN의 `*.ggang.cloud` 매칭). HTTP→HTTPS redirect는 `../../infra/istio/http-redirect.yaml` 이 catch-all 처리.
 
 external-dns가 HTTPRoute의 `hostnames` 를 source로 sync → Cloudflare A 레코드 자동 생성.
 
@@ -257,7 +254,6 @@ kubectl logs -n cicd jenkins-0 -c jenkins | grep -iE "casc|configuration-as-code
 흔한 원인:
 - `configScripts` YAML 들여쓰기 깨짐 → multi-line literal block (`|`) 사용 강제
 - plugin 누락 — `configuration-as-code` plugin 명시 + chart 버전과 호환 확인
-- 변수 치환 누락 — `<your-domain>`, `<your-email>` 가 sed로 치환됐는지 확인
 - `JCasC.defaultConfig: true` + 동일 key 중복 → `ConfiguratorConflictException`. chart 기본 JCasC가 채우는 키(`jenkins.numExecutors`, `unclassified.location.url/adminAddress` 등)는 `configScripts`에서 재정의 ❌. 대신 chart value(`controller.numExecutors`, `controller.jenkinsUrl`, `controller.jenkinsAdminEmail`)로 설정
 
 ### emptyDir 빌드 history 손실
