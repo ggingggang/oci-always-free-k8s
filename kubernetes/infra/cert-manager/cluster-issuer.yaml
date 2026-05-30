@@ -5,7 +5,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: <your-email>
+    email: admin@ggang.cloud
     privateKeySecretRef:
       name: letsencrypt-staging-account-key
     solvers:
@@ -16,7 +16,7 @@ spec:
               key: api-token
         selector:
           dnsZones:
-            - <your-domain>
+            - ggang.cloud
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -25,7 +25,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: <your-email>
+    email: admin@ggang.cloud
     privateKeySecretRef:
       name: letsencrypt-prod-account-key
     solvers:
@@ -36,4 +36,4 @@ spec:
               key: api-token
         selector:
           dnsZones:
-            - <your-domain>
+            - ggang.cloud

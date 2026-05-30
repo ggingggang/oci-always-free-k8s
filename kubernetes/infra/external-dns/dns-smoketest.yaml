@@ -12,7 +12,7 @@ spec:
     - name: public-gateway
       namespace: istio-system
   hostnames:
-    - edns-test.<your-domain>
+    - edns-test.ggang.cloud
   rules:
     - matches:
         - path:

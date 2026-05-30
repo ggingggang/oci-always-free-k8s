@@ -8,10 +8,10 @@ spec:
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
-  commonName: <your-domain>
+  commonName: ggang.cloud
   dnsNames:
-    - <your-domain>
-    - "*.<your-domain>"
+    - ggang.cloud
+    - "*.ggang.cloud"
   duration: 2160h
   renewBefore: 360h
   privateKey:

@@ -12,14 +12,12 @@ Gateway API 리소스(`HTTPRoute`, `GRPCRoute`)의 hostname을 감지해 Cloudfl
 - Cloudflare 계정 + 관리 zone 존재
 - Cloudflare API Token (대시보드 → My Profile → API Tokens → Create Token)
   - Permissions: `Zone : DNS : Edit` + `Zone : Zone : Read`
-  - Zone Resources: `Include : Specific zone : <your-zone>` (account-wide token 금지)
+  - Zone Resources: `Include : Specific zone : ggang.cloud` (account-wide token 금지)
 - 권장 버전: external-dns chart `~1.16.0` (app v0.16.x, Gateway API source 지원)
 
 ## 2. 설치
 
 ```bash
-export DOMAIN=<your-domain>
-
 kubectl create secret generic cloudflare-api-token \
   -n external-dns \
   --from-literal=api-token='<your-cf-token>'
@@ -31,7 +29,7 @@ helm install external-dns external-dns/external-dns \
   -n external-dns \
   --version "~1.16.0" \
   -f values.yaml \
-  --set "domainFilters[0]=${DOMAIN}" \
+  --set "domainFilters[0]=ggang.cloud" \
   --wait
 ```
 
@@ -53,14 +51,14 @@ kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=50 | 
 기존 HTTPRoute가 없을 때 external-dns 동작을 격리 검증.
 
 ```bash
-sed -e "s|<your-domain>|${DOMAIN}|g" dns-smoketest.yaml | kubectl apply -f -
+kubectl apply -f dns-smoketest.yaml
 ```
 
 1~2분 대기 후 검증:
 
 ```bash
 kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=30 | grep -E "CREATE|already up to date"
-nslookup "edns-test.${DOMAIN}" 1.1.1.1
+nslookup "edns-test.ggang.cloud" 1.1.1.1
 ```
 
 ![DNS](./images/DNS.png)
@@ -68,7 +66,7 @@ nslookup "edns-test.${DOMAIN}" 1.1.1.1
 정리 (sync policy로 DNS 레코드 자동 삭제 확인):
 
 ```bash
-sed -e "s|<your-domain>|${DOMAIN}|g" dns-smoketest.yaml | kubectl delete -f -
+kubectl delete -f dns-smoketest.yaml
 kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=10 | grep DELETE
 ```
 
@@ -97,7 +95,7 @@ kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=10 | 
 
 ### 도메인은 `--set`으로 주입
 
-values.yaml에 도메인을 박지 않고 설치 시 `--set domainFilters[0]=<your-domain>`으로 주입. 환경 분리(staging/prod) 또는 도메인 교체 시 values.yaml을 건드리지 않고 처리.
+values.yaml에 도메인을 박지 않고 설치 시 `--set domainFilters[0]=...`으로 주입. 환경 분리(staging/prod) 또는 도메인 교체 시 values.yaml을 건드리지 않고 처리.
 
 ### Secret 관리 — k8s Secret 직접, Vault 이관 예정
 

@@ -9,7 +9,7 @@ spec:
       namespace: istio-system
       sectionName: https-wildcard
   hostnames:
-    - "argocd.<your-domain>"
+    - "argocd.ggang.cloud"
   rules:
     - backendRefs:
         - name: argocd-server

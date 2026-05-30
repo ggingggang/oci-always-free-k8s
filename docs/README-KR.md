@@ -172,9 +172,40 @@ VCN 내부 통신(워커↔워커, 워커↔DB)은 인스턴스 전체 대역폭
 
 개인 프로젝트 및 비프로덕션 워크로드에는 Basic Cluster로 충분.
 
+## Fork Setup
+
+본 레포를 fork 한 사용자가 사적 값을 자기 값으로 바꾸는 절차.
+
+### 도메인 치환
+
+`init.sh` 가 yaml/markdown/script 전반의 `ggang.cloud` 를 일괄 치환. `admin@ggang.cloud` 도 부수적으로 함께 갱신됨.
+
+```bash
+./init.sh your-domain.example
+git diff --stat
+```
+
+GNU sed 가정 (Linux / Windows git-bash). macOS 는 `gnu-sed` 설치 또는 `sed -i ''` 수동 대응.
+
+### `kubernetes/.env` 작성
+
+git 에 들어가지 않는 토큰만 담음 (`*.env` 는 gitignore). Secret 생성 명령 직전에 source.
+
+```bash
+cat > kubernetes/.env <<EOF
+export jenkins=<jenkins-admin-token-or-leave-empty-on-first-install>
+export GHCR_TOKEN=<your-ghcr-write-token>
+export GHCR_USER=<your-github-user>
+EOF
+
+source kubernetes/.env
+```
+
+Cloudflare API token 은 `.env` 가 아닌 컴포넌트별 `kubectl create secret` 시 인라인 주입 (`kubernetes/infra/cert-manager/`, `kubernetes/infra/external-dns/` 참조).
+
 ## 컨벤션
 
-- **Placeholder**: `<your-domain>`, `<your-email>`, `<your-cf-token>`, `<your-region>` — apply 시 `sed | kubectl apply -f -` 로 치환. 각 컴포넌트 README 참조.
+- **Placeholder**: `<your-cf-token>`, `<your-region>`, `<your-github-user>`, `<your-ghcr-write-token>` — secret 성격 값, Secret 생성 시 직접 주입. apex 도메인(`ggang.cloud`) + admin 이메일(`admin@ggang.cloud`)은 git 박힘. 각 컴포넌트 README 참조.
 - **비밀값**: `*.env`, `*.local.*`, `*.tfvars`, `*.pem`, `*.ppk`, `*.pub` 는 gitignore 적용. 사적 값은 git 추적 제외.
 - **README 구조**: 모든 컴포넌트 폴더는 5섹션 — 전제 조건 / 설치 / 검증 / 결정 / 주의 사항.
 - **Helm 버전**: `~X.Y.0` SemVer tilde — patch만 자동, minor는 명시적 갱신.

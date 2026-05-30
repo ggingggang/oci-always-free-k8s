@@ -20,7 +20,7 @@ spec:
     - name: https-apex
       port: 443
       protocol: HTTPS
-      hostname: "<your-domain>"
+      hostname: "ggang.cloud"
       tls:
         mode: Terminate
         certificateRefs:
@@ -32,7 +32,7 @@ spec:
     - name: https-wildcard
       port: 443
       protocol: HTTPS
-      hostname: "*.<your-domain>"
+      hostname: "*.ggang.cloud"
       tls:
         mode: Terminate
         certificateRefs:

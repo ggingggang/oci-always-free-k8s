@@ -23,8 +23,8 @@ controller:
   serviceType: ClusterIP
   servicePort: 8080
 
-  jenkinsUrl: "https://jenkins.<your-domain>/"
-  jenkinsAdminEmail: "<your-email>"
+  jenkinsUrl: "https://jenkins.ggang.cloud/"
+  jenkinsAdminEmail: "admin@ggang.cloud"
 
   numExecutors: 0
 
