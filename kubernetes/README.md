@@ -24,7 +24,7 @@ kubernetes/
     └── database/         # HeatWave MySQL 연결 smoke test
 ```
 
-상세 설치 순서 + 컴포넌트 의존 관계: [`infra/README.md`](./infra/README.md).
+상세 설치 순서 + 컴포넌트 의존 관계: [`infra/README.md`](./infra/README.md) (부트스트랩), [`platform/README.md`](./platform/README.md) (CI/CD).
 
 ## 적용 모델
 
@@ -40,5 +40,5 @@ helm install + `kubectl apply` 수동 (멱등). 도메인은 git 박힘, secret 
 
 ## 예정 추가
 
-- `platform/` — monitoring (kube-prometheus / Loki / Tempo / Grafana), openbao (argocd, jenkins 도입 완료)
+- `platform/` — monitoring (kube-prometheus / Loki / Alloy / Tempo / Grafana / Kiali), openbao (argocd, jenkins 도입 완료)
 - `apps/` 또는 별도 레포 — 실제 워크로드

@@ -1,6 +1,6 @@
 # OCI Kubernetes (Always Free)
 
-A production-shaped Kubernetes platform on **Always Free** resources in an OCI paid account (Pay As You Go / Universal Credits).
+A Kubernetes platform engineered within **Always Free** constraints (4 OCPU / 24 GB, 2 nodes) on an OCI paid account (Pay As You Go / Universal Credits).
 
 **[📖 한국어 문서](./docs/README-KR.md)**
 
@@ -17,7 +17,7 @@ A production-shaped Kubernetes platform on **Always Free** resources in an OCI p
 | DNS | external-dns + Cloudflare | done |
 | TLS | cert-manager + Let's Encrypt (DNS-01) | done |
 | GitOps | ArgoCD, Jenkins, GHCR | planned |
-| Observability | kube-prometheus-stack, Thanos, Loki, Alloy, Tempo, Kiali | planned |
+| Observability | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | planned |
 | Security | OpenBao (Vault), Trivy, Kyverno, cosign, PSA, NetworkPolicy | planned |
 | App infra | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | planned |
 | DR / Backup | Velero, OCI Block Volume Backup, Vault Raft Snapshot | planned |
@@ -99,6 +99,10 @@ Full catalog: [`docs/summary.md`](./docs/summary.md).
 │   │   ├── external-dns/
 │   │   ├── cert-manager/
 │   │   └── README.md
+│   ├── platform/               # CI/CD · platform services
+│   │   ├── argocd/             # GitOps control plane
+│   │   ├── jenkins/            # JCasC + Kaniko dynamic builds
+│   │   └── README.md
 │   ├── test/                   # One-shot validation
 │   └── README.md
 └── docs/
@@ -138,6 +142,12 @@ Install in order: `namespaces` → `gateway-api` → `istio` (core) → `externa
 
 Details: [`kubernetes/infra/README.md`](./kubernetes/infra/README.md).
 
+### 4. Deploy platform (CI/CD)
+
+On top of the infra layer: ArgoCD (GitOps control plane) and Jenkins (JCasC + Kaniko dynamic builds), both exposed via the wildcard Gateway.
+
+Details: [`kubernetes/platform/README.md`](./kubernetes/platform/README.md).
+
 ## Network Layout
 
 | Subnet | CIDR | Type | Purpose |
@@ -172,40 +182,17 @@ Intra-VCN traffic (worker↔worker, worker↔DB) uses full instance bandwidth.
 
 Basic Cluster is sufficient for personal projects and non-production workloads.
 
-## Fork Setup
+## Secrets
 
-For fork users — swap hard-coded values to your own.
+Tokens never enter git. Two channels:
 
-### Change the apex domain
-
-`init.sh` replaces every `ggang.cloud` occurrence across yaml/markdown/scripts. `admin@ggang.cloud` is rewritten as a side effect.
-
-```bash
-./init.sh your-domain.example
-git diff --stat
-```
-
-GNU sed assumed (Linux / git-bash on Windows). macOS users: install `gnu-sed` via Homebrew or run the equivalent `sed -i ''` manually.
-
-### Create `kubernetes/.env`
-
-Holds tokens that never enter git (`*.env` is gitignored). Source it before running any Secret-creating command.
-
-```bash
-cat > kubernetes/.env <<EOF
-export jenkins=<jenkins-admin-token-or-leave-empty-on-first-install>
-export GHCR_TOKEN=<your-ghcr-write-token>
-export GHCR_USER=<your-github-user>
-EOF
-
-source kubernetes/.env
-```
-
-Cloudflare API tokens are not in `.env` — generated per-component and passed inline to `kubectl create secret` (see `kubernetes/infra/cert-manager/`, `kubernetes/infra/external-dns/`).
+- **`kubernetes/.env`** (gitignored) — `jenkins`, `GHCR_TOKEN`, `GHCR_USER`. Source before any Secret-creating command. Migration to OpenBao + ESO is planned.
+- **Per-component inline** — Cloudflare API tokens (`<your-cf-token>`) for cert-manager / external-dns. Generated per-component and passed straight into `kubectl create secret` (see each component README).
 
 ## Conventions
 
-- **Placeholders**: `<your-cf-token>`, `<your-region>`, `<your-github-user>`, `<your-ghcr-write-token>` — secret-grade values, injected at Secret creation time. Apex domain (`ggang.cloud`) and admin email (`admin@ggang.cloud`) are hard-coded in git. See each component README.
+- **In-git values**: apex domain (`ggang.cloud`) and admin email (`admin@ggang.cloud`) are hard-coded — see [`init.sh`](./init.sh) for domain rotation.
+- **Placeholders for secret-grade values**: `<your-cf-token>`, `<your-region>`, `<your-github-user>`, `<your-ghcr-write-token>` — injected at Secret creation time, never committed.
 - **Secrets**: `*.env`, `*.local.*`, `*.tfvars`, `*.pem`, `*.ppk`, `*.pub` are gitignored. Personal values never enter git.
 - **README structure**: every component folder follows 5 sections — Prerequisites / Setup / Verification / Decisions / Notes.
 - **Helm versions**: pinned via SemVer tilde (`~X.Y.0`) — patch-level auto-follow, minor requires explicit bump.

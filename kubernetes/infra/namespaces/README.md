@@ -21,7 +21,7 @@ kubectl apply -f namespaces.yaml
 | `external-dns` | external-dns 전용 |
 | `cicd` | ArgoCD, Jenkins (PSA `enforce=baseline`) |
 | `build` | Kaniko 빌드 Pod 전용 (PSA `enforce=privileged`) |
-| `monitoring` | kube-prometheus-stack, Thanos, Loki, Grafana, Tempo, Kiali |
+| `monitoring` | kube-prometheus-stack, Loki, Grafana, Tempo, Kiali |
 | `vault` | OpenBao |
 | `app` | 워크로드 (PSA `enforce=restricted`) |
 
