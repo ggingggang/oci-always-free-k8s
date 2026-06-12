@@ -71,7 +71,7 @@ resource "oci_containerengine_node_pool" "arm_workers" {
   node_metadata = {
     user_data = base64encode(data.local_file.user_data.content)
   }
- 
+
   node_shape_config {
     ocpus         = 2
     memory_in_gbs = 12

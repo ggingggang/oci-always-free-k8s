@@ -1,0 +1,62 @@
+global:
+  tlsDisable: true
+
+server:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+  dataStorage:
+    enabled: true
+    size: 50Gi
+    storageClass: oci-bv
+
+  auditStorage:
+    enabled: false
+
+  standalone:
+    enabled: false
+
+  ha:
+    enabled: true
+    replicas: 1
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        ui = true
+
+        listener "tcp" {
+          tls_disable = 1
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+        }
+
+        storage "raft" {
+          path = "/openbao/data"
+        }
+
+        seal "ocikms" {
+          key_id              = "<your-kms-key-ocid>"
+          crypto_endpoint     = "<your-kms-crypto-endpoint>"
+          management_endpoint = "<your-kms-management-endpoint>"
+        }
+
+        service_registration "kubernetes" {}
+
+        disable_mlock = true
+
+ui:
+  enabled: true
+
+injector:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi

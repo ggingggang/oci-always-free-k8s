@@ -43,3 +43,18 @@ output "heatwave_port" {
   value = module.database.heatwave_port
 }
 
+output "kms_unseal_key_id" {
+  value       = module.kms.unseal_key_id
+  description = "OpenBao seal stanza: key_id"
+}
+
+output "kms_crypto_endpoint" {
+  value       = module.kms.crypto_endpoint
+  description = "OpenBao seal stanza: crypto_endpoint"
+}
+
+output "kms_management_endpoint" {
+  value       = module.kms.management_endpoint
+  description = "OpenBao seal stanza: management_endpoint"
+}
+

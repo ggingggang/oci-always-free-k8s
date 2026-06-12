@@ -17,8 +17,9 @@ A Kubernetes platform engineered within **Always Free** constraints (4 OCPU / 24
 | DNS | external-dns + Cloudflare | done |
 | TLS | cert-manager + Let's Encrypt (DNS-01) | done |
 | GitOps | ArgoCD, Jenkins, GHCR | done |
+| Secrets | OpenBao (Vault), OCI KMS auto-unseal | done |
 | Observability | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | planned |
-| Security | OpenBao (Vault), Trivy, Kyverno, cosign, PSA, NetworkPolicy | planned |
+| Security | Trivy, Kyverno, cosign, PSA, NetworkPolicy | planned |
 | App infra | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | planned |
 | DR / Backup | Velero, OCI Block Volume Backup, Vault Raft Snapshot | planned |
 | Test | k6 | planned |
@@ -88,8 +89,8 @@ Full catalog: [`docs/summary.md`](./docs/summary.md).
 
 ```
 .
-├── terraform/                  # OCI infra (VCN, OKE, MySQL, IAM/NSG)
-│   ├── modules/{networking,oke,database,iam}/
+├── terraform/                  # OCI infra (VCN, OKE, MySQL, KMS, IAM/NSG)
+│   ├── modules/{networking,oke,database,kms,iam}/
 │   └── README.md
 ├── kubernetes/                 # K8s manifests
 │   ├── infra/                  # Bootstrap infra
@@ -102,6 +103,7 @@ Full catalog: [`docs/summary.md`](./docs/summary.md).
 │   ├── platform/               # CI/CD · platform services
 │   │   ├── argocd/             # GitOps control plane
 │   │   ├── jenkins/            # JCasC + Kaniko dynamic builds
+│   │   ├── openbao/            # Secrets store (Raft 1 + OCI KMS auto-unseal)
 │   │   └── README.md
 │   ├── test/                   # One-shot validation
 │   └── README.md
@@ -186,7 +188,7 @@ Basic Cluster is sufficient for personal projects and non-production workloads.
 
 Tokens never enter git. Two channels:
 
-- **`kubernetes/.env`** (gitignored) — `jenkins`, `GHCR_TOKEN`, `GHCR_USER`. Source before any Secret-creating command. Migration to OpenBao + ESO is planned.
+- **`kubernetes/.env`** (gitignored) — `jenkins`, `GHCR_TOKEN`, `GHCR_USER`. Source before any Secret-creating command. OpenBao is deployed; migrating these into it is the next step.
 - **Per-component inline** — Cloudflare API tokens (`<your-cf-token>`) for cert-manager / external-dns. Generated per-component and passed straight into `kubectl create secret` (see each component README).
 
 ## Conventions

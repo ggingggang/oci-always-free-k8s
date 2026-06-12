@@ -7,10 +7,10 @@ locals {
 }
 
 # ──────────────────────────────────────────
-# Networking (VCN, Subnets, Security Lists, Bastion)
+# Networking (VCN, Subnets, Security Lists)
 # ──────────────────────────────────────────
 module "networking" {
-  source                = "./modules/networking"
+  source           = "./modules/networking"
   compartment_ocid = var.compartment_ocid
 }
 
@@ -32,13 +32,23 @@ module "oke" {
 }
 
 # ──────────────────────────────────────────
-# IAM (Dynamic Group, Policy, NSG)
+# KMS (Vault, auto-unseal Key)
+# ──────────────────────────────────────────
+module "kms" {
+  source           = "./modules/kms"
+  compartment_ocid = var.compartment_ocid
+}
+
+# ──────────────────────────────────────────
+# IAM (NSG, Dynamic Group, Policy)
 # ──────────────────────────────────────────
 module "iam" {
   source           = "./modules/iam"
   compartment_ocid = var.compartment_ocid
+  tenancy_ocid     = var.tenancy_ocid
   vcn_id           = module.networking.vcn_id
   allowed_cidr     = var.allowed_cidr
+  unseal_key_id    = module.kms.unseal_key_id
 }
 
 # ──────────────────────────────────────────

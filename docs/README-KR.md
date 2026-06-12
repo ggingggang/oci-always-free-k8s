@@ -17,8 +17,9 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 | DNS | external-dns + Cloudflare | 완료 |
 | TLS | cert-manager + Let's Encrypt (DNS-01) | 완료 |
 | GitOps | ArgoCD, Jenkins, GHCR | 완료 |
+| 시크릿 | OpenBao (Vault), OCI KMS auto-unseal | 완료 |
 | 관측 | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | 예정 |
-| 보안 | OpenBao (Vault), Trivy, Kyverno, cosign, PSA, NetworkPolicy | 예정 |
+| 보안 | Trivy, Kyverno, cosign, PSA, NetworkPolicy | 예정 |
 | 앱 인프라 | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | 예정 |
 | DR / 백업 | Velero, OCI Block Volume Backup, Vault Raft Snapshot | 예정 |
 | 부하 테스트 | k6 | 예정 |
@@ -88,8 +89,8 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 
 ```
 .
-├── terraform/                  # OCI 인프라 (VCN, OKE, MySQL, IAM/NSG)
-│   ├── modules/{networking,oke,database,iam}/
+├── terraform/                  # OCI 인프라 (VCN, OKE, MySQL, KMS, IAM/NSG)
+│   ├── modules/{networking,oke,database,kms,iam}/
 │   └── README.md
 ├── kubernetes/                 # K8s 매니페스트
 │   ├── infra/                  # 부트스트랩 인프라
@@ -102,6 +103,7 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 │   ├── platform/               # CI/CD · 플랫폼 서비스
 │   │   ├── argocd/             # GitOps 컨트롤 플레인
 │   │   ├── jenkins/            # JCasC + Kaniko 동적 빌드
+│   │   ├── openbao/            # 시크릿 저장소 (Raft 1 + OCI KMS auto-unseal)
 │   │   └── README.md
 │   ├── test/                   # 일회성 검증
 │   └── README.md
@@ -186,7 +188,7 @@ VCN 내부 통신(워커↔워커, 워커↔DB)은 인스턴스 전체 대역폭
 
 토큰은 git 에 들어가지 않음. 채널 2개:
 
-- **`kubernetes/.env`** (gitignored) — `jenkins`, `GHCR_TOKEN`, `GHCR_USER`. Secret 생성 명령 직전에 source. 향후 OpenBao + ESO 이관 예정.
+- **`kubernetes/.env`** (gitignored) — `jenkins`, `GHCR_TOKEN`, `GHCR_USER`. Secret 생성 명령 직전에 source. OpenBao 설치 완료 — 이 값들의 이관이 다음 단계.
 - **컴포넌트별 인라인** — Cloudflare API token (`<your-cf-token>`) 은 cert-manager / external-dns 각 컴포넌트에서 발급해서 `kubectl create secret` 에 직접 주입 (각 컴포넌트 README 참조).
 
 ## 컨벤션

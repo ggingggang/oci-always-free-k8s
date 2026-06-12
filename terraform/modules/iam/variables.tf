@@ -2,6 +2,10 @@ variable "compartment_ocid" {
   type = string
 }
 
+variable "tenancy_ocid" {
+  type = string
+}
+
 variable "vcn_id" {
   type = string
 }
@@ -9,4 +13,9 @@ variable "vcn_id" {
 variable "allowed_cidr" {
   type        = string
   description = "공인 서비스 접근 허용 IP (e.g. 1.2.3.4/32)"
+}
+
+variable "unseal_key_id" {
+  type        = string
+  description = "OpenBao auto-unseal 용 KMS key OCID"
 }
