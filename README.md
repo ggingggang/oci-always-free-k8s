@@ -16,7 +16,7 @@ A Kubernetes platform engineered within **Always Free** constraints (4 OCPU / 24
 | Mesh / Gateway | Gateway API, Istio Ambient, NLB | done |
 | DNS | external-dns + Cloudflare | done |
 | TLS | cert-manager + Let's Encrypt (DNS-01) | done |
-| GitOps | ArgoCD, Jenkins, GHCR | planned |
+| GitOps | ArgoCD, Jenkins, GHCR | done |
 | Observability | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | planned |
 | Security | OpenBao (Vault), Trivy, Kyverno, cosign, PSA, NetworkPolicy | planned |
 | App infra | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | planned |

@@ -16,7 +16,7 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 | 메시 / 게이트웨이 | Gateway API, Istio Ambient, NLB | 완료 |
 | DNS | external-dns + Cloudflare | 완료 |
 | TLS | cert-manager + Let's Encrypt (DNS-01) | 완료 |
-| GitOps | ArgoCD, Jenkins, GHCR | 예정 |
+| GitOps | ArgoCD, Jenkins, GHCR | 완료 |
 | 관측 | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | 예정 |
 | 보안 | OpenBao (Vault), Trivy, Kyverno, cosign, PSA, NetworkPolicy | 예정 |
 | 앱 인프라 | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | 예정 |

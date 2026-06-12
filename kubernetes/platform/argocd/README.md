@@ -58,14 +58,15 @@ UI 접근: 브라우저에서 `https://argocd.ggang.cloud` → admin login.
 
 ## 4. 결정
 
-### self-managed Application 패턴 미채택
+### self-managed Application + helm release adopt — 채택 (도입 대기)
 
-`application.yaml` 로 ArgoCD가 *자기 자신* 을 sync 하는 GitOps 데모 패턴은 두지 않음. 사유:
+본 레포(인프라)의 `kubernetes/` 매니페스트를 ArgoCD 가 sync 하는 모델 채택. 초기엔 "helm release 만으로 충분" 으로 미채택했으나 결정 뒤집음. 사유:
 
-- 의도는 "ArgoCD 떠있는 인프라" 1건. GitOps 본질 증명은 향후 별도 deploy repo 에서 *앱* 을 sync 할 때 자연스럽게 발생
-- self-managed + `selfHeal: true` 패턴은 별도 deploy repo 도입 시점에 재검토
+- git 이 진실 = `selfHeal` 정합 — 수동 `kubectl apply`/helm 운영에서 발생하는 드리프트를 감지·자동 복구
+- 기존 helm release (cert-manager / external-dns / istio / jenkins / argocd 자신) 는 컴포넌트별 Application 으로 adopt
+- 앱 sync 는 별도 deploy repo 책임 — config vs source code 분리 + 인프라/앱 권한 경계는 git 레벨에서 유지
 
-helm release 만으로 충분하며, 업그레이드/롤백은 `helm upgrade` / `helm rollback` 으로 운영.
+현재는 helm release 로 운영 중. `application.yaml`(self-managed) + adopt Application + AppProject 는 도입 시점에 추가. 그 전까지 업그레이드/롤백은 `helm upgrade` / `helm rollback`.
 
 ### 외부 노출 — Gateway TLS 단일 종료
 

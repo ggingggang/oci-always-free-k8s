@@ -28,7 +28,7 @@ kubernetes/
 
 ## 적용 모델
 
-helm install + `kubectl apply` 수동 (멱등). 도메인은 git 박힘, secret 성격 값만 sed/Vault 경유. ArgoCD 는 helm release 로만 유지 — 본 레포(인프라)를 ArgoCD 가 sync 하지 않음. 앱 sync 는 향후 별도 deploy repo 대상.
+helm install + `kubectl apply` 수동 (멱등). 도메인은 git 박힘, secret 성격 값만 sed/Vault 경유. ArgoCD 는 현재 helm release 로 유지하되, 본 레포(인프라)는 self-managed Application + 기존 helm release adopt 로 ArgoCD sync 전환 예정. 앱 sync 는 별도 deploy repo 대상 — config vs source code 분리 원칙 유지.
 
 수동 적용 흐름은 cold-start / DR 복구 자산으로 유지.
 

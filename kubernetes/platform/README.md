@@ -40,7 +40,7 @@ external-dns가 HTTPRoute의 `hostnames`를 source로 Cloudflare A 레코드 자
 
 ## 5. GitOps 모델
 
-ArgoCD는 helm release로만 유지 — 본 레포(인프라)를 ArgoCD가 sync ❌. 앱 sync는 향후 별도 deploy repo 대상.
+ArgoCD는 현재 helm release로 유지. 본 레포(인프라)는 self-managed Application + 기존 helm release adopt로 ArgoCD sync 전환 예정 (Application 매니페스트 도입 시점에). 앱 sync는 별도 deploy repo 대상 — config vs source code 분리 원칙 유지.
 
 빌드/배포 흐름의 권한 경계가 git 레벨에서 강제됨:
 
