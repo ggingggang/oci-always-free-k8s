@@ -18,6 +18,7 @@ A Kubernetes platform engineered within **Always Free** constraints (4 OCPU / 24
 | TLS | cert-manager + Let's Encrypt (DNS-01) | done |
 | GitOps | ArgoCD, Jenkins, GHCR | done |
 | Secrets | OpenBao (Vault), OCI KMS auto-unseal | done |
+| Admin access | Tailscale (subnet router pod) | done |
 | Observability | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | planned |
 | Security | Trivy, Kyverno, cosign, PSA, NetworkPolicy | planned |
 | App infra | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | planned |
@@ -99,6 +100,7 @@ Full catalog: [`docs/summary.md`](./docs/summary.md).
 │   │   ├── istio/
 │   │   ├── external-dns/
 │   │   ├── cert-manager/
+│   │   ├── tailscale/
 │   │   └── README.md
 │   ├── platform/               # CI/CD · platform services
 │   │   ├── argocd/             # GitOps control plane

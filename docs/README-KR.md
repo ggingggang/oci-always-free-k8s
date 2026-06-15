@@ -18,6 +18,7 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 | TLS | cert-manager + Let's Encrypt (DNS-01) | 완료 |
 | GitOps | ArgoCD, Jenkins, GHCR | 완료 |
 | 시크릿 | OpenBao (Vault), OCI KMS auto-unseal | 완료 |
+| 관리 접근 | Tailscale (subnet router pod) | 완료 |
 | 관측 | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | 예정 |
 | 보안 | Trivy, Kyverno, cosign, PSA, NetworkPolicy | 예정 |
 | 앱 인프라 | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | 예정 |
@@ -99,6 +100,7 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 │   │   ├── istio/
 │   │   ├── external-dns/
 │   │   ├── cert-manager/
+│   │   ├── tailscale/
 │   │   └── README.md
 │   ├── platform/               # CI/CD · 플랫폼 서비스
 │   │   ├── argocd/             # GitOps 컨트롤 플레인

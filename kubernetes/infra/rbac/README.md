@@ -29,6 +29,7 @@ kubernetes/
 | Jenkins controller | `cicd/jenkins` | `cicd` NS Pod/configmap/secret(read)/events (agent 관리) | Role + RoleBinding | `platform/jenkins/rbac.yaml` |
 | Jenkins → build | `cicd/jenkins` | `build` NS Pod CRUD (Kaniko 빌드 Pod 관리, cross-NS) | Role + RoleBinding | `platform/jenkins/rbac.yaml` |
 | Kaniko 빌드 | `build/kaniko-builder` | 권한 0건 (`automountServiceAccountToken: false`). Pod 신원 전용 | SA only | `platform/jenkins/rbac.yaml` |
+| Tailscale router | `tailscale/tailscale` | `tailscale` NS Secret — create + `tailscale-state` 한정 get/update/patch (노드 신원 영속) | Role + RoleBinding | `infra/tailscale/rbac.yaml` |
 
 ## 3. 검증
 

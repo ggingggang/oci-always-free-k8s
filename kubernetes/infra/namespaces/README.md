@@ -23,6 +23,7 @@ kubectl apply -f namespaces.yaml
 | `build` | Kaniko 빌드 Pod 전용 (PSA `enforce=privileged`) |
 | `monitoring` | kube-prometheus-stack, Loki, Grafana, Tempo, Kiali |
 | `vault` | OpenBao (PSA `enforce=baseline`) |
+| `tailscale` | Tailscale subnet router (PSA `enforce=baseline`) |
 | `app` | 워크로드 (PSA `enforce=restricted`) |
 
 ## 3. 검증
@@ -39,6 +40,7 @@ PSA enforce 적용 네임스페이스:
 - `cicd` → `baseline` (Jenkins/ArgoCD 는 root 불필요, agent 도 non-root)
 - `build` → `privileged` (Kaniko 가 root + capability 요구)
 - `vault` → `baseline` (OpenBao 는 non-root + `disable_mlock` 운영, IPC_LOCK 불필요)
+- `tailscale` → `baseline` (userspace mode — NET_ADMIN/tun 불필요)
 - 그 외 인프라 NS → enforce 미적용 (ztunnel/istio-cni 권한 요구)
 
 ## 4. 결정

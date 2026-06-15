@@ -13,6 +13,7 @@ OKE 클러스터의 기반 인프라 계층. 네임스페이스/PSA, Gateway API
 | `istio/` | Ambient mesh(`base`/`istiod`/`cni`/`ztunnel`) + Gateway/HTTPRoute | 4 | — |
 | `external-dns/` | HTTPRoute hostnames → Cloudflare DNS sync | 1 | Cloudflare zone + API token |
 | `cert-manager/` | LE DNS-01 + 와일드카드 Certificate | 1 | Cloudflare zone + API token |
+| `tailscale/` | 관리 플레인 사설 접근 (subnet router pod, userspace) | — | Tailscale 계정 + auth key |
 | `rbac/` | RBAC 설계 문서 (권한 매트릭스 + 컨벤션). 실 YAML은 각 컴포넌트 폴더 동거 | — | — |
 
 ## 2. 설치 순서
