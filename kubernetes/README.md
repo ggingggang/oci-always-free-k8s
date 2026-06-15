@@ -18,7 +18,8 @@ kubernetes/
 ├── platform/             # CI/CD · 관측 · 보안 등 플랫폼 컴포넌트
 │   ├── argocd/           # GitOps 컨트롤 플레인 (helm + HTTPRoute)
 │   ├── jenkins/          # JCasC + emptyDir, 동적 agent (+ Kaniko podTemplate in build NS)
-│   └── openbao/          # 시크릿 저장소 (Raft 1 + OCI KMS auto-unseal + Injector)
+│   ├── openbao/          # 시크릿 저장소 (Raft 1 + OCI KMS auto-unseal + Injector)
+│   └── monitoring/       # kube-prometheus-stack (Prometheus/Alertmanager/Grafana)
 └── test/                 # 일회성 검증 자산
     ├── networking/       # NLB smoke test
     ├── storage/          # Block Volume CSI smoke test
@@ -41,5 +42,5 @@ helm install + `kubectl apply` 수동 (멱등). 도메인은 git 박힘, secret 
 
 ## 예정 추가
 
-- `platform/` — monitoring (kube-prometheus / Loki / Alloy / Tempo / Grafana / Kiali). argocd, jenkins, openbao 도입 완료
+- `platform/` — 관측 후속 (Loki / Alloy / Tempo / Kiali). argocd, jenkins, openbao, monitoring(kube-prometheus-stack) 도입 완료
 - `apps/` 또는 별도 레포 — 실제 워크로드
