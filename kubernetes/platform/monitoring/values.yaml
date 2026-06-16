@@ -8,8 +8,8 @@ prometheusOperator:
 
 prometheus:
   prometheusSpec:
-    retention: 3d
-    retentionSize: 4GB
+    retention: 15d
+    retentionSize: 45GiB
     resources:
       requests:
         cpu: 100m
@@ -17,8 +17,13 @@ prometheus:
       limits:
         memory: 768Mi
     storageSpec:
-      emptyDir:
-        sizeLimit: 5Gi
+      volumeClaimTemplate:
+        spec:
+          storageClassName: oci-bv
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
 
 alertmanager:
   alertmanagerSpec:

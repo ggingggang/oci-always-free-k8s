@@ -72,8 +72,8 @@ PSA `baseline`은 호스트 네임스페이스(hostNetwork)를 금지. `hostNetw
 ### Grafana 외부 노출 — Gateway 단일 TLS 종료
 argocd 패턴 동일. Grafana는 ClusterIP HTTP, `public-gateway`가 `*.ggang.cloud` 와일드카드로 TLS 종료. mesh 내부는 Istio Ambient L4 mTLS.
 
-### 스토리지 — Prometheus 영속 안 함 (로컬 emptyDir)
-OCI Block Volume 최소 단위 50GB — `10Gi` 요청해도 50GB로 올림 + Always Free 한도(총 200GB, jenkins 50 + openbao 50 + 노드 부트볼륨)에서 50GB 차감. 메트릭 history에 블록볼륨 한 칸을 태우지 않기로 하고 **노드 로컬 emptyDir**(`sizeLimit 5Gi`) + 짧은 retention(`3d`/`4GB`). 재시작 시 history 소실 수용 — Loki(오브젝트 스토리지) / Tempo(emptyDir) 후속과 정합. Grafana/Alertmanager도 ephemeral.
+### 스토리지 — Prometheus 영속 PV (oci-bv 50Gi)
+Prometheus 는 장기 메트릭 저장소(Thanos) 없는 단독 보관소 → 재시작마다 history 소실은 비용 과다. Always Free Block Volume 한도(부트 ×2 + PV ×2 = 4볼륨 / 총 200GB)의 PV 2칸 우선순위 = **Vault, Prometheus**. `storageSpec.volumeClaimTemplate` 로 `oci-bv` 50Gi 동적 프로비저닝, retention `15d` / retentionSize `45GiB`(디스크 full 전 prune 가드). Grafana/Alertmanager 는 ephemeral 유지(대시보드=코드, 알림 상태는 짧은 보존이라 손실 허용). Loki(오브젝트 스토리지) / Tempo(emptyDir) 후속과 정합.
 
 ### 리소스 핀 — Always Free tight
 24GB 분배에서 Vault/기존 컴포넌트와 공존하도록 tight. mem limit만 설정(cpu limit 미설정 — throttling 회피).
@@ -83,8 +83,8 @@ OCI Block Volume 최소 단위 50GB — `10Gi` 요청해도 50GB로 올림 + Alw
 ### chart 버전 / CRD
 major를 자주 올림 — upgrade 전 CHANGELOG breaking change 확인. CRD는 chart가 설치하지만 `helm uninstall` 시 잔존. major upgrade 시 CRD 수동 apply가 필요할 수 있음.
 
-### Prometheus 로컬 디스크 / OOM
-`retentionSize 4GB` < emptyDir `sizeLimit 5Gi` — 한도 전에 prune되게. emptyDir는 노드 부트볼륨을 공유하므로 sizeLimit 초과 시 pod evict. 타겟 급증으로 mem 압박 시 `resources.limits.memory` 상향. 영속이 필요해지면 50Gi PVC(oci-bv)로 전환하되 블록볼륨 한도 확인.
+### Prometheus 디스크 / OOM
+`retentionSize 45GiB` < PV `50Gi` — 디스크 full 전에 prune. 시계열 급증으로 디스크 압박 시 retention 단축. mem 압박은 `resources.limits.memory` 상향 — 메모리는 active series·쿼리 기준이라 디스크 retention 과 별개. PVC 는 `volumeClaimTemplate` 이라 STS 재생성 시에도 유지(블록볼륨 한도 = 부트 2 + PV 2 고정).
 
 ### Grafana admin Secret 회전
 `grafana` Secret 평문 base64. 최초 로그인 후 변경. OpenBao 이관 후보.
