@@ -90,4 +90,4 @@ major를 자주 올림 — upgrade 전 CHANGELOG breaking change 확인. CRD는 
 `grafana` Secret 평문 base64. 최초 로그인 후 변경. OpenBao 이관 후보.
 
 ### metrics-server 별도
-HPA(CPU/메모리)·`kubectl top` 필요 시 metrics-server를 따로 설치. 보유 여부: `kubectl get deploy -n kube-system metrics-server`.
+HPA(CPU/메모리)·`kubectl top`은 이 스택이 아니라 metrics-server(`metrics.k8s.io`)가 담당 — `../../infra/metrics-server/`. 보유 여부: `kubectl get deploy -n kube-system metrics-server`.

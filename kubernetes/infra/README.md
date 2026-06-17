@@ -13,6 +13,7 @@ OKE 클러스터의 기반 인프라 계층. 네임스페이스/PSA, Gateway API
 | `istio/` | Ambient mesh(`base`/`istiod`/`cni`/`ztunnel`) + Gateway/HTTPRoute | 4 | — |
 | `external-dns/` | HTTPRoute hostnames → Cloudflare DNS sync | 1 | Cloudflare zone + API token |
 | `cert-manager/` | LE DNS-01 + 와일드카드 Certificate | 1 | Cloudflare zone + API token |
+| `metrics-server/` | `metrics.k8s.io` 리소스 메트릭 (`kubectl top` / HPA) | 1 | — |
 | `rbac/` | RBAC 설계 문서 (권한 매트릭스 + 컨벤션). 실 YAML은 각 컴포넌트 폴더 동거 | — | — |
 
 ## 2. 설치 순서
@@ -31,6 +32,8 @@ OKE 클러스터의 기반 인프라 계층. 네임스페이스/PSA, Gateway API
 3번 helm 4개는 명시한 순서로. `base`가 GatewayClass CRD 등록, `istiod`가 컨트롤 플레인, `istio-cni`가 노드 데이터 플레인 redirect, `ztunnel`이 ambient L4 mTLS.
 
 5번과 6번 사이에 Certificate `Ready=True` 검증 필요. Secret 미존재 상태로 Gateway HTTPS listener를 apply하면 `ResolvedRefs: False` — Certificate 발급되면 자동 회복되지만 status 노이즈 발생.
+
+`metrics-server/`는 위 의존 그래프와 독립(`kube-system` 단독 helm 릴리즈) — 아무 시점에 설치 가능.
 
 ## 3. 외부 의존
 

@@ -14,6 +14,7 @@ kubernetes/
 │   ├── istio/            # Ambient mesh + Gateway/HTTPRoute
 │   ├── external-dns/     # HTTPRoute hostnames → Cloudflare DNS
 │   ├── cert-manager/     # LE DNS-01 + 와일드카드 Certificate
+│   ├── metrics-server/   # metrics.k8s.io (kubectl top / HPA)
 │   └── README.md         # 전체 그림 + 설치 순서
 ├── platform/             # CI/CD · 관측 · 보안 등 플랫폼 컴포넌트
 │   ├── argocd/           # GitOps 컨트롤 플레인 (helm + HTTPRoute)
