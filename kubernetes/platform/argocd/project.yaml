@@ -7,6 +7,13 @@ spec:
   description: Self-managed platform infra layer
   sourceRepos:
     - https://github.com/GGingGGang/oci-always-free-k8s.git
+    - https://charts.jetstack.io
+    - https://kubernetes-sigs.github.io/external-dns/
+    - https://kubernetes-sigs.github.io/metrics-server/
+    - https://istio-release.storage.googleapis.com/charts
+    - https://prometheus-community.github.io/helm-charts
+    - https://charts.jenkins.io
+    - https://argoproj.github.io/argo-helm
   destinations:
     - server: https://kubernetes.default.svc
       namespace: "*"

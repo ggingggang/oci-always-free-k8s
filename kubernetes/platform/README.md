@@ -43,7 +43,7 @@ external-dns가 HTTPRoute의 `hostnames`를 source로 Cloudflare A 레코드 자
 
 ## 5. GitOps 모델
 
-ArgoCD는 현재 helm release로 유지. 본 레포(인프라)는 self-managed Application + 기존 helm release adopt로 ArgoCD sync 전환 예정 (Application 매니페스트 도입 시점에). 앱 sync는 별도 deploy repo 대상 — config vs source code 분리 원칙 유지.
+본 레포(인프라)는 self-managed Application + 기존 helm release adopt 구조로 전환. app-of-apps(`argocd/project.yaml` + `argocd/root.yaml` + `argocd/apps/`)가 컴포넌트별 Application 으로 기존 release 를 흡수 — 부트스트랩·adopt 절차·sync-wave·제외(gateway-api CRD / openbao)는 `argocd/README.md` 6장. adopt 단계는 수동 sync + prune off(ArgoCD = 구경꾼), selfHeal/prune 활성은 하드닝 turn. 앱 sync는 별도 deploy repo 대상 — config vs source code 분리 원칙 유지.
 
 빌드/배포 흐름의 권한 경계가 git 레벨에서 강제됨:
 
