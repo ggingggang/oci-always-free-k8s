@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: cicd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: platform
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/external-dns/
+      chart: external-dns
+      targetRevision: 1.16.1
+      helm:
+        valueFiles:
+          - $values/kubernetes/infra/external-dns/values.yaml
+        parameters:
+          - name: domainFilters[0]
+            value: ggang.cloud
+    - repoURL: https://github.com/GGingGGang/oci-always-free-k8s.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=false

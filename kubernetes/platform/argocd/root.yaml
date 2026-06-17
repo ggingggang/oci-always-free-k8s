@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-root
+  namespace: cicd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/GGingGGang/oci-always-free-k8s.git
+    targetRevision: main
+    path: kubernetes/platform/argocd/apps
+    directory:
+      recurse: false
+      include: "*.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cicd
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false

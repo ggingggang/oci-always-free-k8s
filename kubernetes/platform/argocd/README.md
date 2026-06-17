@@ -58,7 +58,7 @@ UI 접근: 브라우저에서 `https://argocd.ggang.cloud` → admin login.
 
 ## 4. 결정
 
-### self-managed Application + helm release adopt — 채택 (도입 대기)
+### self-managed Application + helm release adopt — 채택
 
 본 레포(인프라)의 `kubernetes/` 매니페스트를 ArgoCD 가 sync 하는 모델 채택. 초기엔 "helm release 만으로 충분" 으로 미채택했으나 결정 뒤집음. 사유:
 
@@ -66,7 +66,7 @@ UI 접근: 브라우저에서 `https://argocd.ggang.cloud` → admin login.
 - 기존 helm release (cert-manager / external-dns / istio / jenkins / argocd 자신) 는 컴포넌트별 Application 으로 adopt
 - 앱 sync 는 별도 deploy repo 책임 — config vs source code 분리 + 인프라/앱 권한 경계는 git 레벨에서 유지
 
-현재는 helm release 로 운영 중. `application.yaml`(self-managed) + adopt Application + AppProject 는 도입 시점에 추가. 그 전까지 업그레이드/롤백은 `helm upgrade` / `helm rollback`.
+구조·부트스트랩·adopt 절차는 아래 6장.
 
 ### 외부 노출 — Gateway TLS 단일 종료
 
@@ -118,3 +118,80 @@ argocd login argocd.ggang.cloud --grpc-web
 ```
 
 `--grpc-web` 없이 호출하면 HTTP/2 protocol error. UI 는 자동 처리되어 무관.
+
+## 6. self-managed GitOps (app-of-apps)
+
+기존 helm release 를 부수지 않고 ArgoCD 관리로 흡수(adopt)하는 구조. `cicd` 네임스페이스(ArgoCD 거주지)에서 동작.
+
+```
+argocd/
+├── project.yaml        AppProject "platform" — sourceRepo/destination/리소스 화이트리스트
+├── root.yaml           Application "platform-root" — apps/ 디렉터리를 가리키는 app-of-apps
+└── apps/               root 가 관리하는 자식 Application 들
+    ├── namespaces.yaml          (raw)
+    ├── cert-manager.yaml        (helm) + cert-manager-resources.yaml (raw: ClusterIssuer/Certificate)
+    ├── external-dns.yaml        (helm)
+    ├── metrics-server.yaml      (helm)
+    ├── istio-base/istiod/istio-cni/ztunnel.yaml  (helm ×4) + istio-gateway.yaml (raw: Gateway/redirect)
+    ├── kps.yaml                 (helm) + monitoring-httproute.yaml (raw)
+    ├── jenkins.yaml             (helm) + jenkins-rbac.yaml / jenkins-httproute.yaml (raw)
+    └── argocd.yaml              (helm, self-manage) + argocd-httproute.yaml (raw)
+```
+
+### 핵심 원칙
+
+- **Application 이름 = 원래 `helm install <name>`**. ArgoCD 가 Application 이름을 helm release 명으로 렌더하므로, 이름이 어긋나면 adopt 가 아니라 리소스 *중복 생성* 이 됨. (`kps`/`istiod`/`istio-cni` 등 전부 원래 release 명 유지)
+- **helm chart + git values = multi-source**. helm repo 를 chart source 로, 본 레포를 `ref: values` 로 두고 `$values/...` 로 values 파일 참조. values 의 단일 진실은 각 컴포넌트 폴더의 `values.yaml` 유지.
+- **adopt 단계 sync policy = 수동 + prune off**. `syncPolicy.automated` 미설정. 돌던 리소스를 추적만 하고 ArgoCD 는 구경꾼. `selfHeal`/`prune`/`automated` 활성은 하드닝 turn 에서.
+- **`ServerSideApply=true`**. 기존 client-side last-applied annotation 과 충돌 없이 field ownership 흡수.
+
+### 부트스트랩
+
+```bash
+# AppProject + root 1회 적용 (root 가 이후 apps/ 를 관리)
+kubectl apply -f project.yaml
+kubectl apply -f root.yaml
+
+# root sync → apps/ 자식 Application 생성 (수동)
+argocd app sync platform-root
+
+# 자식들이 OutOfSync 로 뜸 — sync-wave 순서로 하나씩 diff 검수 후 sync
+argocd app diff cert-manager     # diff 가 instance 라벨/tracking annotation 추가 수준이면 정상 adopt
+argocd app sync cert-manager
+```
+
+adopt 정상 판정: diff 가 `app.kubernetes.io/instance` 라벨 + `argocd.argoproj.io/tracking-id` annotation 추가 수준(거의 0)이면 OK. spec 자체 diff 가 크면 chart 버전/values 불일치 의심.
+
+### sync-wave 순서 (cold-rebuild 시 의존 순서)
+
+| wave | Application |
+|------|-------------|
+| 0 | namespaces |
+| 1 | cert-manager, istio-base |
+| 2 | external-dns, metrics-server, istiod, istio-cni, ztunnel |
+| 3 | cert-manager-resources, kps, jenkins-rbac |
+| 4 | istio-gateway, jenkins, argocd (self) |
+| 5 | jenkins-httproute, argocd-httproute, monitoring-httproute |
+
+`argocd` 자기 관리(self-manage)는 잘못 sync 하면 자기 손을 자르므로 wave 4 + **수동 sync 전용**. 하드닝 turn 에서도 selfHeal 활성은 마지막.
+
+### chart 버전 핀 — 실측 exact
+
+자식 helm Application 의 `targetRevision` 은 `helm list -A` 실측값으로 exact pin — 첫 diff 가 업그레이드가 아니라 adopt(거의 0)로 떨어지게.
+
+| release | chart 버전 |
+|---------|-----------|
+| cert-manager | `v1.18.6` |
+| external-dns | `1.16.1` |
+| metrics-server | `3.13.1` |
+| istio base/istiod/cni/ztunnel | `1.29.3` |
+| kps | `75.0.0` |
+| jenkins | `5.9.26` |
+| argocd | `7.7.23` |
+
+upgrade 시엔 helm 으로 먼저 올린 뒤(`helm upgrade`) `helm list -A` 로 실측값을 다시 박거나, range 로 풀고 자동 추종. 범위 핀은 새 patch 가 나오면 OutOfSync 노이즈가 생기므로 adopt 단계에선 exact 유지.
+
+### adopt 제외 2건
+
+- **gateway-api CRD** — 원격 release 아티팩트(`standard-install.yaml`)라 git tree 의 directory source 로 못 가리킴. 클러스터 부트스트랩(`kubectl apply --server-side`)으로 관리. CRD 는 클러스터 수명주기와 함께 가는 토대라 GitOps 제외가 합리적. (`../../infra/gateway-api/`)
+- **openbao** — KMS OCID 를 `sed` 로 주입한 `values.local.yaml` 이 git-ignore(`*.local.*`). git-sourced values 로는 placeholder 만 읽혀 깨짐. adopt 하려면 (a) OCID 를 git 에 박거나(식별자라 비밀 아님 — 보안은 instance-principal Policy 담당) (b) ArgoCD Vault Plugin / `helm.parameters` 주입. 결정 보류 → helm 운영 유지. (`../openbao/`)

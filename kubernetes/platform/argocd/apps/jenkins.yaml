@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jenkins
+  namespace: cicd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: platform
+  sources:
+    - repoURL: https://charts.jenkins.io
+      chart: jenkins
+      targetRevision: 5.9.26
+      helm:
+        valueFiles:
+          - $values/kubernetes/platform/jenkins/values.yaml
+    - repoURL: https://github.com/GGingGGang/oci-always-free-k8s.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cicd
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=false
