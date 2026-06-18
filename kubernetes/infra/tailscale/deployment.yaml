@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale-router
+  namespace: tailscale
+  labels:
+    app.kubernetes.io/name: tailscale-router
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tailscale-router
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tailscale-router
+    spec:
+      serviceAccountName: tailscale
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: tailscale
+          image: docker.io/tailscale/tailscale:v1.92.4
+          env:
+            - name: TS_KUBE_SECRET
+              value: tailscale-state
+            - name: TS_USERSPACE
+              value: "true"
+            - name: TS_ACCEPT_DNS
+              value: "false"
+            - name: TS_ROUTES
+              value: "10.0.0.0/16,10.96.0.0/16"
+            - name: TS_HOSTNAME
+              value: oke-vcn-router
+            - name: TS_EXTRA_ARGS
+              value: "--advertise-tags=tag:k8s-router"
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-auth
+                  key: authkey
+                  optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi

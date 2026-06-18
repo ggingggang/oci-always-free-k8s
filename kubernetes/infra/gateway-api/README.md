@@ -33,13 +33,13 @@ kubectl get crd -o jsonpath='{range .items[?(@.metadata.annotations.gateway\.net
 
 ## 4. 결정
 
-### CRD를 Istio chart에서 분리
+### Gateway API CRD를 단독 핀 관리
 
-Istio Helm chart는 `pilot.env.PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER` + `installPackagedCustomResourceDefinitions` 옵션으로 Gateway API CRD를 함께 깔 수 있음. **비채택.**
+Istio `base` chart는 Gateway API CRD를 번들하지 않음 — 클러스터에 CRD가 미리 설치돼 있어야 istiod가 Gateway API 지원을 활성화함. (istio/base에 `enableGatewayCRDs` 식 자동 설치 값을 넣자는 건 커뮤니티 제안 단계로 미병합 — istio/istio Discussion #57636, 작성 시점 2026-06.)
 
-사유: Istio 업그레이드 시 CRD 버전을 Istio chart가 임의로 변경 → 버전 관리 책임이 Istio측으로 흡수되어 불명확해짐. Gateway API CRD는 본 매니페스트에서 단독 핀 관리.
+따라서 Gateway API CRD는 본 매니페스트에서 단독 설치·버전 핀. CRD 버전 소유권이 이 레포에 있어 Istio 업그레이드와 독립적으로 관리됨 — 단 Istio가 지원하는 Gateway API 버전 범위와 교집합 안에서만 갈아끼움(5장).
 
-`istio/base` chart의 values에 명시적으로 옵션 끔 (`base.values.yaml` 참조).
+istiod의 Gateway 자동 프로비저닝(`PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER`)은 CRD 설치와 무관한 별개 기능 — Gateway 리소스로부터 게이트웨이 데이터플레인(Service+Deployment)을 띄우는 데 사용하며 istiod default(켜짐) 유지.
 
 ### Standard channel
 
@@ -65,6 +65,6 @@ major 변경(v1.x → v2.x) 시 호환성 표 확인 (`https://gateway-api.sigs.
 
 `kubectl delete crd ...` 는 해당 CRD의 모든 CR을 cascade 삭제 → Gateway/HTTPRoute 다 사라지고 트래픽 절단. CRD 제거는 클러스터 폐기 시점 한정.
 
-### Istio chart의 자동 설치 옵션 확인
+### Istio가 CRD 설치를 떠안는지 확인
 
-본 결정과 충돌하지 않도록 `istio/base` chart values에서 Gateway API CRD 자동 설치 옵션이 꺼져있어야 함. Istio 업그레이드 시 chart default 변경 가능성 → release notes 확인 필수.
+현재 Istio는 Gateway API CRD를 설치하지 않으므로 충돌 없음. 단 #57636 같은 자동 설치 기능이 향후 병합되면 Istio 업그레이드 시 본 매니페스트의 단독 핀과 이중 설치·버전 경합이 날 수 있음 → release notes에서 Gateway API CRD 번들 여부 확인.

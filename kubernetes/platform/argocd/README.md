@@ -191,7 +191,8 @@ adopt 정상 판정: diff 가 `app.kubernetes.io/instance` 라벨 + `argocd.argo
 
 upgrade 시엔 helm 으로 먼저 올린 뒤(`helm upgrade`) `helm list -A` 로 실측값을 다시 박거나, range 로 풀고 자동 추종. 범위 핀은 새 patch 가 나오면 OutOfSync 노이즈가 생기므로 adopt 단계에선 exact 유지.
 
-### adopt 제외 2건
+### adopt 제외 3건
 
 - **gateway-api CRD** — 원격 release 아티팩트(`standard-install.yaml`)라 git tree 의 directory source 로 못 가리킴. 클러스터 부트스트랩(`kubectl apply --server-side`)으로 관리. CRD 는 클러스터 수명주기와 함께 가는 토대라 GitOps 제외가 합리적. (`../../infra/gateway-api/`)
 - **openbao** — KMS OCID 를 `sed` 로 주입한 `values.local.yaml` 이 git-ignore(`*.local.*`). git-sourced values 로는 placeholder 만 읽혀 깨짐. adopt 하려면 (a) OCID 를 git 에 박거나(식별자라 비밀 아님 — 보안은 instance-principal Policy 담당) (b) ArgoCD Vault Plugin / `helm.parameters` 주입. 결정 보류 → helm 운영 유지. (`../openbao/`)
+- **tailscale** — 관리 플레인 *접근 계층*. ArgoCD/클러스터 장애 시 *들어가는* 경로라 ArgoCD 건강에 의존하면 자기모순(prune 한 번에 접근 경로 증발). gateway-api CRD 와 같은 부트스트랩 등급으로 `kubectl apply` 관리, auth Secret 은 git 밖. (`../../infra/tailscale/`)
