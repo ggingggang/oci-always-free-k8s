@@ -58,3 +58,17 @@ output "kms_management_endpoint" {
   description = "OpenBao seal stanza: management_endpoint"
 }
 
+output "object_storage_namespace" {
+  value       = module.object_storage.namespace
+  description = "Loki storage_config / S3 endpoint 구성용"
+}
+
+output "object_storage_s3_endpoint" {
+  value       = module.object_storage.s3_endpoint
+  description = "Loki S3-compat endpoint"
+}
+
+output "object_storage_buckets" {
+  value = module.object_storage.bucket_names
+}
+

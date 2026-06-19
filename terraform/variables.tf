@@ -40,3 +40,9 @@ variable "allowed_cidr" {
   type        = string
   description = "공인 서비스 접근 허용 IP (e.g. 1.2.3.4/32)"
 }
+
+variable "object_storage_buckets" {
+  type        = list(string)
+  description = "Object Storage 버킷 목록 (Loki chunks 등)"
+  default     = []
+}

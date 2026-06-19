@@ -61,3 +61,13 @@ module "database" {
   availability_domain = local.availability_domain
   admin_password      = var.db_admin_password
 }
+
+# ──────────────────────────────────────────
+# Object Storage (Loki chunks 등)
+# ──────────────────────────────────────────
+module "object_storage" {
+  source           = "./modules/object-storage"
+  compartment_ocid = var.compartment_ocid
+  region           = var.region
+  bucket_names     = var.object_storage_buckets
+}
