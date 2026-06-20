@@ -96,7 +96,7 @@ HSM 키는 키 버전당 과금, software 키는 무료 — Always Free 0원 유
 
 ### TLS 종료 위임 (tls_disable)
 
-listener 평문 — 클러스터 내부 hop은 Istio Ambient(ztunnel) L4 mTLS가 보호. ArgoCD `--insecure`와 동일 패턴. 외부 노출 자체가 없어 Gateway TLS 경로도 불요.
+listener 평문 — `vault` 네임스페이스가 Istio Ambient에 enrolled되어 있어(`istio.io/dataplane-mode: ambient`), 메시 내부 caller↔OpenBao hop은 ztunnel L4 mTLS로 보호된다. 라벨이 곧 스위치 — enrollment 없으면 내부 hop도 평문이므로 이 전제는 `vault` enrolled 상태에 의존한다. ArgoCD `--insecure`와 동일 패턴. 외부 노출 자체가 없어 Gateway TLS 경로도 불요. (보호는 *메시 내부* hop 한정 — 현재 ESO 등 in-mesh caller는 후속.)
 
 ### Agent Injector (ESO는 후속 비교)
 

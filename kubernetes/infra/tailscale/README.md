@@ -107,9 +107,9 @@ tailscale ping oke-vcn-router
 tailnet 경유 kubectl/DB가 **확인된 후에만**:
 
 ```bash
-# 1. admin UI 퍼블릭 제거 (external-dns가 DNS 레코드 자동 철거)
-kubectl delete httproute argocd jenkins -n cicd
-kubectl delete httproute grafana -n monitoring
+# 1. admin UI 퍼블릭 제거 — GitOps 경로 (kubectl delete 금지: out-of-band 라 ArgoCD 가 되돌림)
+#    각 httproute 매니페스트를 주석 처리(이미 반영) 후 prune sync → external-dns 가 DNS 레코드 자동 철거
+argocd app sync argocd-httproute jenkins-httproute monitoring-httproute --prune --core
 
 # 2. NSG 6443 룰 제거 — terraform/modules/iam/main.tf 의
 #    kubectl_api 6443 ingress 룰 삭제 후 apply

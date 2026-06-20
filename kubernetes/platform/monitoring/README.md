@@ -36,7 +36,7 @@ Grafana admin 비밀번호 (chart 자동 생성):
 ```bash
 kubectl -n monitoring get secret grafana \
   -o jsonpath='{.data.admin-password}' | base64 -d ; echo
-# https://grafana.ggang.cloud → admin / <위 출력>
+# tailnet 경유 http://<grafana ClusterIP> → admin / <위 출력>  (public httproute 는 주석 처리)
 ```
 
 ## 3. 검증
@@ -44,11 +44,8 @@ kubectl -n monitoring get secret grafana \
 ```bash
 kubectl get pods -n monitoring
 
-kubectl -n monitoring get httproute grafana \
-  -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}' ; echo
-# 기대: True
-
-dig +short grafana.ggang.cloud
+kubectl -n monitoring get svc grafana          # ClusterIP 확인 (tailnet 경유 접근)
+# public HTTPRoute 재활성(주석 해제) 시: get httproute grafana 의 Accepted=True + dig +short grafana.ggang.cloud
 ```
 
 Prometheus 타겟 (전부 up, control-plane `down` 타겟 없어야 함):

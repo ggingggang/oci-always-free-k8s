@@ -63,8 +63,8 @@ JCasC 적용 확인:
 kubectl exec -n cicd jenkins-0 -c jenkins -- ls /var/jenkins_home/casc_configs/
 ```
 
-브라우저:
-- `https://jenkins.ggang.cloud` 접근 → 로그인 → JCasC seed에 박힌 system message 확인
+브라우저 (tailnet 경유 ClusterIP — public httproute 는 주석 처리):
+- `http://<jenkins ClusterIP>:8080` 접근 → 로그인 → JCasC seed에 박힌 system message 확인
 - Manage Jenkins → Configuration as Code → "Reload existing configuration" 동작 확인
 
 **선언성 검증 — pod 재시작 후 동일 상태**:
@@ -75,7 +75,7 @@ kubectl wait --for=condition=ready pod/jenkins-0 -n cicd --timeout=180s
 # 브라우저 재접속 → 동일 system message + admin 사용자 유지 확인 (emptyDir이라도 JCasC가 재구성)
 ```
 
-DNS 자동 등록 (external-dns + Cloudflare):
+DNS 자동 등록은 public HTTPRoute 재활성(주석 해제) 시에만 — external-dns + Cloudflare:
 
 ```bash
 nslookup "jenkins.ggang.cloud" 1.1.1.1
@@ -136,7 +136,7 @@ CVE 발생 또는 chart bump 시:
    kubectl exec -n cicd jenkins-0 -c jenkins -- \
      ls /var/jenkins_home/plugins | awk -F'.jpi' '{print $1}' | sort -u
    ```
-   또는 `https://jenkins.ggang.cloud/script` 에서:
+   또는 script console (`http://<jenkins ClusterIP>:8080/script`, tailnet) 에서:
    ```groovy
    Jenkins.instance.pluginManager.plugins.each { println "${it.shortName}:${it.version}" }
    ```

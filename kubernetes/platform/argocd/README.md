@@ -32,7 +32,8 @@ kubectl apply -f httproute.yaml
 kubectl -n cicd get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d ; echo
 
-# https://argocd.ggang.cloud 접속 후
+# tailnet 경유 http://<argocd-server ClusterIP> 접속 후
+# (public httproute 는 주석 처리 — 재활성 시 https://argocd.ggang.cloud)
 # admin / <위 출력> 로 로그인 → Settings에서 비밀번호 변경
 
 kubectl -n cicd delete secret argocd-initial-admin-secret
@@ -43,18 +44,14 @@ kubectl -n cicd delete secret argocd-initial-admin-secret
 ```bash
 kubectl get pods -n cicd -l app.kubernetes.io/part-of=argocd
 
-kubectl -n cicd get httproute argocd \
-  -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}' ; echo
-# 기대: True
+# tailnet 경유 접근 (public HTTPRoute 는 주석 처리 — tailnet 전용)
+kubectl -n cicd get svc argocd-server          # ClusterIP 확인
+curl -I http://<argocd-server ClusterIP>       # tailnet(--accept-routes) 상태에서 응답 확인
 ```
 
-DNS sync 확인 (external-dns가 ~1-5분 내 Cloudflare에 A record 생성):
+UI 접근: 브라우저에서 `http://<argocd-server ClusterIP>` (tailnet) → admin login.
 
-```bash
-dig +short argocd.ggang.cloud
-```
-
-UI 접근: 브라우저에서 `https://argocd.ggang.cloud` → admin login.
+> public 도메인 노출이 필요하면 `argocd-httproute` 매니페스트 주석 해제 후 sync — external-dns 가 `argocd.ggang.cloud` A record 를 ~1-5분 내 Cloudflare 에 생성 (`dig +short argocd.ggang.cloud` 확인).
 
 ## 4. 결정
 
@@ -109,15 +106,21 @@ CHANGELOG 에서 breaking change 확인 (특히 6.x → 7.x, 7.x → 8.x).
 
 `timeout.reconciliation: 180s` — 기본 180s 명시. webhook 적용 시 즉시 반영 — webhook 은 SSO turn 이후.
 
-### gRPC CLI 접근
+### CLI 접근
 
-`argocd` CLI 는 gRPC. Gateway TLS 종료 + HTTPRoute 환경에선:
+public Gateway/HTTPRoute 가 주석 처리된 현재, CLI 는 **core 모드**가 1순위 — `argocd-server` 를 거치지 않고 kubeconfig 로 kube API 의 Application CR 을 직접 조작한다 (외부 노출·비밀번호 로그인 불요):
+
+```bash
+argocd app list --core          # ARGOCD_OPTS=--core 로 고정 가능
+```
+
+core 모드는 argocd 설치 NS 를 kube context 의 현재 namespace 로 인식하므로 context 가 `cicd` 여야 한다.
+
+public 도메인 재활성(httproute 주석 해제) 시엔 gRPC 경유 로그인도 가능 — `argocd` CLI 는 gRPC 라 `--grpc-web` 필요(없으면 HTTP/2 protocol error):
 
 ```bash
 argocd login argocd.ggang.cloud --grpc-web
 ```
-
-`--grpc-web` 없이 호출하면 HTTP/2 protocol error. UI 는 자동 처리되어 무관.
 
 ## 6. self-managed GitOps (app-of-apps)
 
