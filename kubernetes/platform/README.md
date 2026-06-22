@@ -1,6 +1,6 @@
 # platform
 
-infra 부트스트랩(Gateway / TLS / DNS) 위에서 동작하는 플랫폼 계층. 현재 CI/CD(ArgoCD, Jenkins) + 시크릿(OpenBao) 도입. 관측 컴포넌트는 후속.
+infra 부트스트랩(Gateway / TLS / DNS) 위에서 동작하는 플랫폼 계층. CI/CD(ArgoCD, Jenkins) + 시크릿(OpenBao) + 관측(kube-prometheus-stack) + 데이터 백킹(Redis, Kafka — `data` NS) 도입.
 
 각 폴더는 독립 컴포넌트 단위. helm 릴리즈 단위로 의존이 닫혀있어 개별 turn으로 진행 가능.
 
@@ -31,17 +31,20 @@ infra 부트스트랩 완료 후:
 
 ```
 1. argocd       helm + httproute
-2. jenkins      rbac + ghcr-push Secret (build NS) + helm + httproute
+2. jenkins      rbac + ghcr-push Secret (build NS) + helm + webhook httproute
 3. openbao      terraform (kms + iam) 선행 → helm + operator init
+4. monitoring   helm (kube-prometheus-stack) + httproute
+5. redis        kubectl apply (raw manifest, data NS)
+6. kafka        strimzi operator(helm) → Kafka CR (CRD 선행)
 ```
 
-세 컴포넌트는 상호 독립 — 순서 무관. 단 openbao 만 terraform 선행 의존 (KMS 키 + Dynamic Group/Policy). 각 단계 상세는 해당 폴더 README 참조.
+대체로 상호 독립 — argocd/jenkins/monitoring/redis 는 순서 무관. openbao 만 terraform 선행(KMS 키 + Dynamic Group/Policy), kafka 만 strimzi operator(CRD) 선행. 각 단계 상세는 해당 폴더 README 참조.
 
 ## 4. 외부 노출 / TLS
 
-둘 다 `public-gateway`의 `https-wildcard` listener에 HTTPRoute attach. `*.ggang.cloud` 와일드카드 인증서로 Gateway 단일 TLS 종료, mesh 내부 hop은 Istio Ambient(ztunnel) L4 mTLS. HTTP→HTTPS redirect는 `../infra/istio/http-redirect.yaml` catch-all 처리.
+admin UI(argocd/jenkins/grafana) HTTPRoute는 `public-gateway`의 `https-wildcard` listener에 attach하되 **tailnet 컷오버로 대부분 parked**(주석) — 운영 접근은 tailnet ClusterIP. 현재 active public 인입은 Jenkins webhook(`ci-hook.ggang.cloud` `/github-webhook/`, HMAC)뿐. `*.ggang.cloud` 와일드카드 인증서로 Gateway 단일 TLS 종료, HTTP→HTTPS redirect는 `../infra/istio/http-redirect.yaml` catch-all.
 
-external-dns가 HTTPRoute의 `hostnames`를 source로 Cloudflare A 레코드 자동 등록.
+**데이터 계층(redis/kafka)은 외부 노출 0** — ClusterIP, mesh 내부 caller 전용. 모든 내부 hop은 Istio Ambient(ztunnel) L4 mTLS. external-dns가 active HTTPRoute의 `hostnames`를 source로 Cloudflare A 레코드 등록.
 
 ## 5. GitOps 모델
 
@@ -72,5 +75,7 @@ placeholder · helm 버전 핀 · 5섹션 README 구조 등 공통 컨벤션은 
 ## 7. 다음 후보
 
 - monitoring 후속 — Loki / Alloy / Tempo / Kiali (kube-prometheus-stack 완료)
-- 시크릿 이관 — Cloudflare / DB / GHCR Secret → OpenBao (Agent Injector / ESO 비교)
+- 데이터 계층 하드닝 — Redis `requirepass` / Kafka 인증(`scram-sha-512`) + NetworkPolicy (현재 in-mesh 무인증)
+- 시크릿 이관 — Cloudflare / DB / GHCR / webhook Secret → OpenBao (Agent Injector / ESO 비교)
 - ArgoCD SSO — `dex.enabled: true` + GitHub OAuth, `admin` 사용자 비활성
+- MSA 워크로드 — redis/kafka 소비하는 producer/consumer (별도 앱 레포 + Jenkins 파이프라인)

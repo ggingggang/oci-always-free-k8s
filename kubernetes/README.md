@@ -20,7 +20,9 @@ kubernetes/
 │   ├── argocd/           # GitOps 컨트롤 플레인 (helm + HTTPRoute)
 │   ├── jenkins/          # JCasC + emptyDir, 동적 agent (+ Kaniko podTemplate in build NS)
 │   ├── openbao/          # 시크릿 저장소 (Raft 1 + OCI KMS auto-unseal + Injector)
-│   └── monitoring/       # kube-prometheus-stack (Prometheus/Alertmanager/Grafana)
+│   ├── monitoring/       # kube-prometheus-stack (Prometheus/Alertmanager/Grafana)
+│   ├── redis/            # MSA 캐시 (ephemeral, cache-aside, data NS)
+│   └── kafka/            # MSA 이벤트 백본 (Strimzi, KRaft, ephemeral, data NS)
 └── test/                 # 일회성 검증 자산
     ├── networking/       # NLB smoke test
     ├── storage/          # Block Volume CSI smoke test
@@ -43,5 +45,5 @@ helm install + `kubectl apply` 수동 (멱등). 도메인은 git 박힘, secret 
 
 ## 예정 추가
 
-- `platform/` — 관측 후속 (Loki / Alloy / Tempo / Kiali). argocd, jenkins, openbao, monitoring(kube-prometheus-stack) 도입 완료
-- `apps/` 또는 별도 레포 — 실제 워크로드
+- `platform/` — argocd, jenkins, openbao, monitoring, 데이터 계층(redis/kafka, `data` NS) 도입 완료. 관측 후속(Loki / Alloy / Tempo / Kiali) 예정
+- `apps/` 또는 별도 레포 — 실제 워크로드 (redis/kafka 소비하는 producer/consumer)

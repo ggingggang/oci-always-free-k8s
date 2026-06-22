@@ -18,9 +18,10 @@ A Kubernetes platform engineered within **Always Free** constraints (4 OCPU / 24
 | TLS | cert-manager + Let's Encrypt (DNS-01) | done |
 | GitOps | ArgoCD, Jenkins, GHCR | done |
 | Secrets | OpenBao (Vault), OCI KMS auto-unseal | done |
-| Observability | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | planned |
+| Observability | kube-prometheus-stack (metrics) | done · Loki/Alloy/Tempo/Kiali planned |
 | Security | Trivy, Kyverno, cosign, PSA, NetworkPolicy | planned |
-| App infra | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | planned |
+| App data | Strimzi/Kafka (KRaft, ephemeral), Redis (cache) | done |
+| Autoscaling | HPA + Prometheus Adapter | planned |
 | DR / Backup | Velero, OCI Block Volume Backup, Vault Raft Snapshot | planned |
 | Test | k6 | planned |
 
@@ -99,11 +100,16 @@ Full catalog: [`docs/summary.md`](./docs/summary.md).
 │   │   ├── istio/
 │   │   ├── external-dns/
 │   │   ├── cert-manager/
+│   │   ├── metrics-server/
+│   │   ├── tailscale/
 │   │   └── README.md
-│   ├── platform/               # CI/CD · platform services
+│   ├── platform/               # CI/CD · platform · data services
 │   │   ├── argocd/             # GitOps control plane
 │   │   ├── jenkins/            # JCasC + Kaniko dynamic builds
 │   │   ├── openbao/            # Secrets store (Raft 1 + OCI KMS auto-unseal)
+│   │   ├── monitoring/         # kube-prometheus-stack
+│   │   ├── redis/              # MSA cache (ephemeral, cache-aside)
+│   │   ├── kafka/              # MSA event backbone (Strimzi, KRaft, ephemeral)
 │   │   └── README.md
 │   ├── test/                   # One-shot validation
 │   └── README.md
@@ -144,9 +150,9 @@ Install in order: `namespaces` → `gateway-api` → `istio` (core) → `externa
 
 Details: [`kubernetes/infra/README.md`](./kubernetes/infra/README.md).
 
-### 4. Deploy platform (CI/CD)
+### 4. Deploy platform
 
-On top of the infra layer: ArgoCD (GitOps control plane) and Jenkins (JCasC + Kaniko dynamic builds), both exposed via the wildcard Gateway.
+On top of the infra layer: ArgoCD (GitOps control plane), Jenkins (JCasC + Kaniko dynamic builds), monitoring (kube-prometheus-stack), and data services (Redis cache + Strimzi Kafka) in the `data` namespace.
 
 Details: [`kubernetes/platform/README.md`](./kubernetes/platform/README.md).
 

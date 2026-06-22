@@ -85,7 +85,5 @@ kubectl create secret generic cloudflare-api-token \
 
 ## 5. 다음 후보
 
-- echo/whoami HTTPRoute — external-dns sync + end-to-end TLS 검증
-- observability (kube-prometheus-stack, Loki, Grafana, Tempo) — 메트릭/로그/트레이스
-- ArgoCD — 기존 helm 릴리즈 adopt + Application 매니페스트화. RBAC 컨벤션 함께
-- OpenBao (Vault) — Cloudflare/DB 시크릿 Vault 이관 + ESO 도입
+- `cert-manager` / `external-dns` ambient enrollment (현재 보류 — egress 위주라 가치 낮음, `namespaces/README.md` 참조)
+- 백업 / DR — Velero · OCI Block Volume Backup · Vault Raft Snapshot

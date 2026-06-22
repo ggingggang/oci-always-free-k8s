@@ -18,9 +18,10 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 | TLS | cert-manager + Let's Encrypt (DNS-01) | 완료 |
 | GitOps | ArgoCD, Jenkins, GHCR | 완료 |
 | 시크릿 | OpenBao (Vault), OCI KMS auto-unseal | 완료 |
-| 관측 | kube-prometheus-stack, Loki, Alloy, Tempo, Kiali | 예정 |
+| 관측 | kube-prometheus-stack (메트릭) | 완료 · Loki/Alloy/Tempo/Kiali 예정 |
 | 보안 | Trivy, Kyverno, cosign, PSA, NetworkPolicy | 예정 |
-| 앱 인프라 | Strimzi/Kafka (KRaft), Redis, HPA + Prometheus Adapter | 예정 |
+| 앱 데이터 | Strimzi/Kafka (KRaft, ephemeral), Redis (캐시) | 완료 |
+| 오토스케일 | HPA + Prometheus Adapter | 예정 |
 | DR / 백업 | Velero, OCI Block Volume Backup, Vault Raft Snapshot | 예정 |
 | 부하 테스트 | k6 | 예정 |
 
@@ -99,11 +100,16 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 │   │   ├── istio/
 │   │   ├── external-dns/
 │   │   ├── cert-manager/
+│   │   ├── metrics-server/
+│   │   ├── tailscale/
 │   │   └── README.md
-│   ├── platform/               # CI/CD · 플랫폼 서비스
+│   ├── platform/               # CI/CD · 플랫폼 · 데이터 서비스
 │   │   ├── argocd/             # GitOps 컨트롤 플레인
 │   │   ├── jenkins/            # JCasC + Kaniko 동적 빌드
 │   │   ├── openbao/            # 시크릿 저장소 (Raft 1 + OCI KMS auto-unseal)
+│   │   ├── monitoring/         # kube-prometheus-stack
+│   │   ├── redis/              # MSA 캐시 (ephemeral, cache-aside)
+│   │   ├── kafka/              # MSA 이벤트 백본 (Strimzi, KRaft, ephemeral)
 │   │   └── README.md
 │   ├── test/                   # 일회성 검증
 │   └── README.md
@@ -144,9 +150,9 @@ kubectl get nodes
 
 상세: [`kubernetes/infra/README.md`](../kubernetes/infra/README.md).
 
-### 4. 플랫폼 배포 (CI/CD)
+### 4. 플랫폼 배포
 
-infra 계층 위에: ArgoCD(GitOps 컨트롤 플레인) + Jenkins(JCasC + Kaniko 동적 빌드). 둘 다 와일드카드 Gateway로 노출.
+infra 계층 위에: ArgoCD(GitOps 컨트롤 플레인) + Jenkins(JCasC + Kaniko 동적 빌드) + 관측(kube-prometheus-stack) + 데이터 서비스(Redis 캐시 + Strimzi Kafka, `data` NS).
 
 상세: [`kubernetes/platform/README.md`](../kubernetes/platform/README.md).
 
