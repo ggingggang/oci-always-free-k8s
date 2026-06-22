@@ -25,6 +25,7 @@ kubectl apply -f namespaces.yaml
 | `vault` | OpenBao (PSA `enforce=baseline`, Istio ambient enrolled) |
 | `tailscale` | Tailscale subnet router (PSA `enforce=baseline`) |
 | `app` | 워크로드 (PSA `enforce=restricted`, Istio ambient enrolled) |
+| `data` | 백킹 데이터 서비스 — Redis, 후속 Kafka (PSA `enforce=baseline`, Istio ambient enrolled) |
 
 ## 3. 검증
 
@@ -48,6 +49,7 @@ PSA enforce 적용 네임스페이스:
 - `build` → `privileged` (Kaniko 가 root + capability 요구)
 - `vault` → `baseline` (OpenBao 는 non-root + `disable_mlock` 운영, IPC_LOCK 불필요)
 - `tailscale` → `baseline` (userspace mode — `/dev/net/tun`/NET_ADMIN 불필요)
+- `data` → `baseline` (Redis/Kafka 백킹 — non-root 운영, host 권한 불필요)
 - 그 외 인프라 NS → enforce 미적용 (ztunnel/istio-cni 권한 요구)
 
 ## 4. 결정
@@ -77,6 +79,7 @@ enrollment은 opt-in + **무중단** — sidecar 주입과 달리 Pod 재시작/
 - `app` → enrolled (워크로드 mTLS canary, 최초)
 - `cicd` → enrolled (ArgoCD `--insecure` 내부 hop 평문 해소)
 - `vault` → enrolled (OpenBao `tls_disable` 평문 hop 보호 — secret 경로 mTLS)
+- `data` → enrolled (app↔Redis/Kafka hop mTLS — 백킹 서비스 평문 hop 해소)
 - 제외: `istio-system`(컨트롤플레인 자신), `tailscale`(subnet router — 캡처 시 advertise route 동작 깨짐), `build`(Kaniko 빌드 네트워킹), `kube-*`/`default`
 - 보류: `monitoring`(Prometheus scrape 간섭 별도 검토), `cert-manager`/`external-dns`(egress 위주, 가치 낮음)
 
