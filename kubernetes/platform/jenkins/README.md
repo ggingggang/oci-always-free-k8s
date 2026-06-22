@@ -37,10 +37,10 @@ helm repo update
 
 helm install jenkins jenkins/jenkins -n cicd --version "~5.8.0" -f values.yaml --wait
 
-kubectl apply -f webhook-httproute.yaml
+kubectl apply -f httproute.yaml
 ```
 
-`httproute.yaml`(admin UI 전체 노출)은 tailnet 컷오버로 parked(주석) — admin 접근은 ClusterIP/tailnet. 대신 `webhook-httproute.yaml` 가 `/github-webhook/` 한 경로만 public 으로 노출 (이벤트 인입 전용, 결정 §Webhook 참조).
+`httproute.yaml` 한 파일에 webhook 라우트(active, `/github-webhook/` 한 경로 public)와 admin UI 라우트(parked, 주석 — tailnet 컷오버)를 `---` 로 함께 담는다. ArgoCD `jenkins-httproute` Application(`directory.include: httproute.yaml`)이 이 파일을 sync — 위 `kubectl apply` 는 부트스트랩이고 이후 GitOps 가 adopt. admin 접근은 tailnet ClusterIP (결정 §HTTPRoute 참조).
 
 `ghcr-push` Secret 은 `build` NS 에 존재해야 함 (Kaniko podTemplate 이 마운트). GHCR token scope: `write:packages` + `read:packages`. 향후 Vault Agent Injector 또는 GitHub App Installation Token 으로 이관 예정.
 
@@ -240,10 +240,10 @@ manifest commit 패턴: Jenkins 는 *k8s API 직접 호출 ❌*, *git push (앱 
 
 ### HTTPRoute — admin UI 는 parked, webhook 만 public
 
-두 라우트로 분리 — *접근 경로는 호출자가 누구냐로 결정*한다.
+`httproute.yaml` 한 파일에 두 HTTPRoute 리소스(`---` 구분) — *접근 경로는 호출자가 누구냐로 결정*한다. ArgoCD `jenkins-httproute` Application(`directory.include: httproute.yaml`)이 이 파일을 sync 하므로 라우트는 GitOps 로 관리. **별도 파일/Application 신설 ❌** — app-of-apps 의 단일 `httproute.yaml` include 패턴을 따른다(별도 파일은 include 밖이라 ArgoCD 가 adopt 못 함). 독립 on/off 는 파일이 아니라 `---` 로 나뉜 *리소스* 단위 주석 토글로 확보.
 
-- **`httproute.yaml` (admin UI, `jenkins.ggang.cloud`, 전체 path)** — tailnet 컷오버로 **주석 처리(parked)**. admin은 tailnet ClusterIP 전용. 운영자는 tailnet 노드가 될 수 있으니 컨트롤 표면은 사설로.
-- **`webhook-httproute.yaml` (`ci-hook.ggang.cloud`, `/github-webhook/` 만)** — **active**. GitHub(SaaS)는 tailnet 노드가 될 수 없으니 이벤트 인입은 public 일 수밖에 없다. 단 노출은 *한 경로*로 좁히고 HMAC 으로 게이트.
+- **admin UI (`jenkins.ggang.cloud`, 전체 path)** — tailnet 컷오버로 **주석 처리(parked)**, 렌더링 0. admin은 tailnet ClusterIP 전용. 운영자는 tailnet 노드가 될 수 있으니 컨트롤 표면은 사설로.
+- **webhook (`ci-hook.ggang.cloud`, `/github-webhook/` 만)** — **active**. GitHub(SaaS)는 tailnet 노드가 될 수 없으니 이벤트 인입은 public 일 수밖에 없다. 단 노출은 *한 경로*로 좁히고 HMAC 으로 게이트.
 
 #### Webhook — path-scoped public 인입
 
