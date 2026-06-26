@@ -155,7 +155,7 @@ agent:
 
   image:
     repository: docker.io/jenkins/inbound-agent
-    tag: 3327.v868139a_d00e0-3-alpine
+    tag: 3327.v868139a_d00e0-3-jdk21
 
   resources:
     requests:
@@ -177,7 +177,7 @@ agent:
             automountServiceAccountToken: false
             containers:
               - name: jnlp
-                image: docker.io/jenkins/inbound-agent:3327.v868139a_d00e0-3-alpine
+                image: docker.io/jenkins/inbound-agent:3327.v868139a_d00e0-3-jdk21
                 resources:
                   requests:
                     cpu: 50m
