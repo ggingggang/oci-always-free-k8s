@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps
+  namespace: cicd
+spec:
+  description: Application layer (MSA services)
+  sourceRepos:
+    - https://github.com/GGingGGang/oci-always-free-k8s.git
+    - https://github.com/GGingGGang/k8s-test-core-server.git
+    - https://github.com/GGingGGang/k8s-test-batch-server.git
+    - https://github.com/GGingGGang/k8s-test-login-server.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: cicd
+    - server: https://kubernetes.default.svc
+      namespace: core
+    - server: https://kubernetes.default.svc
+      namespace: batch
+    - server: https://kubernetes.default.svc
+      namespace: login
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
