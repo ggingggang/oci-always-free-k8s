@@ -85,6 +85,10 @@ kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=10 | 
 
 `upsert-only` 대신 `sync` 선택. HTTPRoute 삭제 시 DNS 레코드도 자동 제거되어야 GitOps declarative 일관성 유지. TXT registry가 ownership을 추적하므로 external-dns가 만들지 않은 레코드는 보호됨.
 
+### 사설 IP 제외 — `--exclude-target-net=10.0.0.0/8`
+
+OCI 공개 NLB는 공개 IP와 함께 VCN 서브넷의 사설 IP를 동시에 보유한다. Gateway status에 두 주소가 모두 노출되면 external-dns가 A 레코드를 **둘 다** 등록하고, 공개 클라이언트(예: GitHub webhook)가 사설 IP를 선택하면 인터넷에서 라우팅 불가로 도달이 실패한다. `extraArgs`에 `--exclude-target-net=10.0.0.0/8`을 추가해 RFC1918 대역 타깃을 전역 제외 → 공개 IP만 published. `policy: sync`이므로 기존 사설 A 레코드도 자동 정리된다. 진단: `nslookup <host>`로 공개/사설 IP 동시 등록 여부 확인.
+
 ### registry: txt + txtOwnerId
 
 `registry: txt`로 ownership을 TXT 레코드에 기록. `txtOwnerId: oci-oke`는 단일 클러스터 식별자. 추후 멀티 클러스터 도입 시 충돌 방지를 위해 클러스터마다 고유 ID 부여.
