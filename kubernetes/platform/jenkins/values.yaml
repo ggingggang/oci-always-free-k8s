@@ -93,6 +93,7 @@ controller:
     - snakeyaml-api:2.5-149.v72471e9c6371
     - ssh-credentials:361.vb_f6760818e8c
     - structs:362.va_b_695ef4fdf9
+    - timestamper:1.30
     - token-macro:477.vd4f0dc3cb_cf1
     - variant:70.va_d9f17f859e0
     - workflow-api:1384.vdc05a_48f535f
