@@ -1,10 +1,13 @@
 controller:
   resources:
     requests:
-      cpu: 500m
+      cpu: 200m
       memory: 1Gi
     limits:
       memory: 2Gi
+
+  adminUser: admin
+  existingSecret: jenkins-admin-fixed
 
   runAsUser: 1000
   fsGroup: 1000
@@ -173,7 +176,7 @@ agent:
               - name: jnlp
                 resources:
                   requests:
-                    cpu: 100m
+                    cpu: 50m
                     memory: 256Mi
                   limits:
                     memory: 512Mi
@@ -183,7 +186,7 @@ agent:
                 args: ["99d"]
                 resources:
                   requests:
-                    cpu: 500m
+                    cpu: 200m
                     memory: 1Gi
                   limits:
                     memory: 2Gi
