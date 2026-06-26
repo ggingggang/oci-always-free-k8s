@@ -6,8 +6,11 @@ controller:
     limits:
       memory: 2Gi
 
-  adminUser: admin
-  existingSecret: jenkins-admin-fixed
+  admin:
+    username: admin
+    existingSecret: jenkins-admin-fixed
+    userKey: jenkins-admin-user
+    passwordKey: jenkins-admin-password
 
   runAsUser: 1000
   fsGroup: 1000
