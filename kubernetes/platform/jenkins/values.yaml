@@ -154,7 +154,7 @@ agent:
   containerCap: 2
 
   image:
-    repository: jenkins/inbound-agent
+    repository: docker.io/jenkins/inbound-agent
     tag: 3327.v868139a_d00e0-3-alpine
 
   resources:
@@ -177,6 +177,7 @@ agent:
             automountServiceAccountToken: false
             containers:
               - name: jnlp
+                image: docker.io/jenkins/inbound-agent:3327.v868139a_d00e0-3-alpine
                 resources:
                   requests:
                     cpu: 50m
