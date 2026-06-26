@@ -25,6 +25,10 @@ controller:
 
   numExecutors: 0
 
+  containerEnv:
+    - name: GH_ORG
+      value: GGingGGang
+
   installPlugins:
     - antisamy-markup-formatter:173.v680e3a_b_69ff3
     - apache-httpcomponents-client-4-api:4.5.14-269.vfa_2321039a_83
@@ -109,6 +113,31 @@ controller:
       welcome-config: |
         jenkins:
           systemMessage: "Jenkins managed via JCasC. Source of truth = git."
+      env-config: |
+        jenkins:
+          globalNodeProperties:
+            - envVars:
+                env:
+                  - key: GH_ORG
+                    value: ${GH_ORG}
+      jobs-config: |
+        jobs:
+          - script: |
+              pipelineJob('core') {
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/${GH_ORG}/k8s-test-core-server.git')
+                        }
+                        branch('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+              }
 
 persistence:
   enabled: false
