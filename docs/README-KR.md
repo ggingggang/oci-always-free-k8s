@@ -17,6 +17,7 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 | DNS | external-dns + Cloudflare | 완료 |
 | TLS | cert-manager + Let's Encrypt (DNS-01) | 완료 |
 | GitOps | ArgoCD, Jenkins, GHCR | 완료 |
+| 앱 (MSA) | core (Go/chi) → Kaniko/GHCR → ArgoCD app-of-apps | 진행 중 |
 | 시크릿 | OpenBao (Vault), OCI KMS auto-unseal | 완료 |
 | 관측 | kube-prometheus-stack (메트릭) | 완료 · Loki/Alloy/Tempo/Kiali 예정 |
 | 보안 | Trivy, Kyverno, cosign, PSA, NetworkPolicy | 예정 |
@@ -111,6 +112,8 @@ OCI 유료 계정(Pay As You Go / Universal Credits)의 **Always Free 리소스(
 │   │   ├── redis/              # MSA 캐시 (ephemeral, cache-aside)
 │   │   ├── kafka/              # MSA 이벤트 백본 (Strimzi, KRaft, ephemeral)
 │   │   └── README.md
+│   ├── apps/                   # 앱 레이어 GitOps (Application CR만; 매니페스트는 앱 레포)
+│   │   └── argocd/             # AppProject `apps` + app-of-apps root + 서비스별 Application
 │   ├── test/                   # 일회성 검증
 │   └── README.md
 └── docs/
@@ -155,6 +158,12 @@ kubectl get nodes
 infra 계층 위에: ArgoCD(GitOps 컨트롤 플레인) + Jenkins(JCasC + Kaniko 동적 빌드) + 관측(kube-prometheus-stack) + 데이터 서비스(Redis 캐시 + Strimzi Kafka, `data` NS).
 
 상세: [`kubernetes/platform/README.md`](../kubernetes/platform/README.md).
+
+### 5. 애플리케이션 배포
+
+MSA 서비스(현재 `core` — Go/chi 도메인 API)는 별도 `apps` ArgoCD 프로젝트(app-of-apps)로 배포. 각 서비스는 자체 레포(코드 + `deploy/k8s`)이고, 인프라 레포는 Application 포인터만 보유. push → Jenkins(webhook → Kaniko → GHCR) → ArgoCD가 서비스별 NS에 매니페스트 sync → Istio Gateway가 `api.${domain}/v1/<service>` 로 노출.
+
+상세: [`kubernetes/apps/argocd/README.md`](../kubernetes/apps/argocd/README.md).
 
 ## 네트워크 구성
 

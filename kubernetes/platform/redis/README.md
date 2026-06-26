@@ -8,9 +8,9 @@ MSA 워크로드용 인메모리 캐시. cache-aside 패턴 — source of truth 
 ## 1. 전제 조건
 
 - `data` 네임스페이스 + PSA `enforce=baseline` + Istio ambient (`../../infra/namespaces/`)
-- 권장 이미지: `redis:7.4.2-alpine` (작성 시점 stable, 멀티아치 = ARM64 A1.Flex). 설치 전 태그/아치 확인:
+- 이미지: `docker.io/redis:8.6.4-alpine` (`redis.yaml` 핀, 멀티아치 = ARM64 A1.Flex). 설치 전 태그/아치 확인:
   ```bash
-  docker manifest inspect redis:7.4.2-alpine | grep arm64
+  docker manifest inspect redis:8.6.4-alpine | grep arm64
   ```
 
 ## 2. 설치

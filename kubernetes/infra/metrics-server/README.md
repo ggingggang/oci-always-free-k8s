@@ -12,7 +12,7 @@ kube-prometheus-stack(node-exporter·Prometheus)과 별개: 그쪽은 스크랩 
 
 - `kube-system` 네임스페이스 (기본 존재 — 별도 생성 불필요)
 - Helm 3.6+
-- 권장 버전: 작성 시점(2026-06) 추론 chart `~3.12.0` (app `v0.7.x`). chart↔app 버전이 분리돼 있으니 설치 전 확인:
+- 권장 버전: chart `~3.13.0` (ArgoCD `metrics-server` Application 은 `3.13.1` 핀). chart↔app 버전이 분리돼 있으니 설치 전 확인:
   ```bash
   helm search repo metrics-server/metrics-server --versions | head
   ```
@@ -24,7 +24,7 @@ helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
 helm repo update
 
 helm upgrade --install metrics-server metrics-server/metrics-server \
-  -n kube-system --version "~3.12.0" -f values.yaml --wait
+  -n kube-system --version "~3.13.0" -f values.yaml --wait
 ```
 
 ## 3. 검증

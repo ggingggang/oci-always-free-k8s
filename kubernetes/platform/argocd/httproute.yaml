@@ -1,4 +1,6 @@
-# This file is not used due to introduction of Tailscale.
+# HTTPRoute parked — admin UI는 tailnet(ClusterIP) 전용. public 노출 안 함.
+# argocd-httproute Application이 본 파일을 sync하지만 전체 주석이라 렌더 0건(no-op).
+# public 노출 필요 시 아래 주석 해제 + push → ArgoCD 자동 적용 (Application 신설 불요).
 
 # apiVersion: gateway.networking.k8s.io/v1
 # kind: HTTPRoute

@@ -17,6 +17,7 @@ A Kubernetes platform engineered within **Always Free** constraints (4 OCPU / 24
 | DNS | external-dns + Cloudflare | done |
 | TLS | cert-manager + Let's Encrypt (DNS-01) | done |
 | GitOps | ArgoCD, Jenkins, GHCR | done |
+| App (MSA) | core (Go/chi) → Kaniko/GHCR → ArgoCD app-of-apps | in progress |
 | Secrets | OpenBao (Vault), OCI KMS auto-unseal | done |
 | Observability | kube-prometheus-stack (metrics) | done · Loki/Alloy/Tempo/Kiali planned |
 | Security | Trivy, Kyverno, cosign, PSA, NetworkPolicy | planned |
@@ -111,6 +112,8 @@ Full catalog: [`docs/summary.md`](./docs/summary.md).
 │   │   ├── redis/              # MSA cache (ephemeral, cache-aside)
 │   │   ├── kafka/              # MSA event backbone (Strimzi, KRaft, ephemeral)
 │   │   └── README.md
+│   ├── apps/                   # App layer GitOps (Application CRs; manifests live in app repos)
+│   │   └── argocd/             # AppProject `apps` + app-of-apps root + per-service Application
 │   ├── test/                   # One-shot validation
 │   └── README.md
 └── docs/
@@ -155,6 +158,12 @@ Details: [`kubernetes/infra/README.md`](./kubernetes/infra/README.md).
 On top of the infra layer: ArgoCD (GitOps control plane), Jenkins (JCasC + Kaniko dynamic builds), monitoring (kube-prometheus-stack), and data services (Redis cache + Strimzi Kafka) in the `data` namespace.
 
 Details: [`kubernetes/platform/README.md`](./kubernetes/platform/README.md).
+
+### 5. Deploy applications
+
+MSA services (currently `core`, a Go/chi domain API) deploy through a separate `apps` ArgoCD project (app-of-apps). Each service is its own repo (code + `deploy/k8s`); the infra repo holds only the Application pointers. Push triggers Jenkins (webhook → Kaniko → GHCR); ArgoCD syncs the manifests to a per-service namespace and the Istio Gateway exposes it under `api.${domain}/v1/<service>`.
+
+Details: [`kubernetes/apps/argocd/README.md`](./kubernetes/apps/argocd/README.md).
 
 ## Network Layout
 
