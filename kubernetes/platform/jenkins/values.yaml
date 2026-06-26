@@ -34,6 +34,11 @@ controller:
   containerEnv:
     - name: GH_ORG
       value: GGingGGang
+    - name: GIT_PAT
+      valueFrom:
+        secretKeyRef:
+          name: jenkins-git-pat
+          key: token
 
   installPlugins:
     - antisamy-markup-formatter:173.v680e3a_b_69ff3
@@ -127,6 +132,17 @@ controller:
                 env:
                   - key: GH_ORG
                     value: ${GH_ORG}
+      credentials-config: |
+        credentials:
+          system:
+            domainCredentials:
+              - credentials:
+                  - usernamePassword:
+                      scope: GLOBAL
+                      id: github-token
+                      username: GGingGGang
+                      password: ${GIT_PAT}
+                      description: "GitHub PAT (repo scope) — manifest bump push"
       jobs-config: |
         jobs:
           - script: |
