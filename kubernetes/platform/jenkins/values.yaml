@@ -131,6 +131,12 @@ controller:
         jobs:
           - script: |
               pipelineJob('core') {
+                properties {
+                  githubProjectUrl('https://github.com/${GH_ORG}/k8s-test-core-server/')
+                }
+                triggers {
+                  githubPush()
+                }
                 definition {
                   cpsScm {
                     scm {
