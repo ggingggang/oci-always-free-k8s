@@ -63,7 +63,7 @@ UI 접근: 브라우저에서 `http://<argocd-server ClusterIP>` (tailnet) → a
 - 기존 helm release (cert-manager / external-dns / istio / jenkins / argocd 자신) 는 컴포넌트별 Application 으로 adopt
 - 앱 레이어는 **별도 AppProject `apps` + 별도 app-of-apps** 로 분리 — config vs source code 분리 + 인프라/앱 권한 경계는 git/project 레벨에서 강제. 본 `platform` 프로젝트(인프라)와 권한·sync 정책 분리.
 
-구조·부트스트랩·adopt 절차는 아래 6장. 앱 레이어 app-of-apps 는 [`../../apps/argocd/README.md`](../../apps/argocd/README.md) (project `apps`, auto-sync 활성 — 인프라와 달리 디스럽션 비용 낮음).
+구조·부트스트랩·adopt 절차는 아래 6장. 앱 레이어 app-of-apps 는 전용 GitOps 레포(`k8s-gitops`)가 보유 (project `apps`, auto-sync 활성 — 인프라와 달리 디스럽션 비용 낮음).
 
 ### 외부 노출 — Gateway TLS 단일 종료
 

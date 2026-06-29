@@ -161,9 +161,7 @@ infra 계층 위에: ArgoCD(GitOps 컨트롤 플레인) + Jenkins(JCasC + Kaniko
 
 ### 5. 애플리케이션 배포
 
-MSA 서비스(현재 `core` — Go/chi 도메인 API)는 별도 `apps` ArgoCD 프로젝트(app-of-apps)로 배포. 각 서비스는 자체 레포(코드 + `deploy/k8s`)이고, 인프라 레포는 Application 포인터만 보유. push → Jenkins(webhook → Kaniko → GHCR) → ArgoCD가 서비스별 NS에 매니페스트 sync → Istio Gateway가 `api.${domain}/v1/<service>` 로 노출.
-
-상세: [`kubernetes/apps/argocd/README.md`](../kubernetes/apps/argocd/README.md).
+MSA 서비스(현재 `core` — Go/chi 도메인 API)는 별도 `apps` ArgoCD 프로젝트(app-of-apps)로 배포 — 이 app-of-apps 는 인프라 레포가 아니라 전용 GitOps 레포(`k8s-gitops`)에 있다. 각 서비스는 자체 레포(코드 + `deploy/k8s`)이고, GitOps 레포는 Application 포인터만 보유. push → Jenkins(webhook → Kaniko → GHCR) → ArgoCD가 서비스별 NS에 매니페스트 sync → Istio Gateway가 `api.${domain}/v1/<service>` 로 노출.
 
 ## 네트워크 구성
 

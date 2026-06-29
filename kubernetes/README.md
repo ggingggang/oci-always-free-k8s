@@ -23,8 +23,6 @@ kubernetes/
 │   ├── monitoring/       # kube-prometheus-stack (Prometheus/Alertmanager/Grafana)
 │   ├── redis/            # MSA 캐시 (ephemeral, cache-aside, data NS)
 │   └── kafka/            # MSA 이벤트 백본 (Strimzi, KRaft, ephemeral, data NS)
-├── apps/                 # 앱 레이어 GitOps 진입점 (Application CR만, 매니페스트는 앱 레포)
-│   └── argocd/           # AppProject `apps` + app-of-apps root + 서비스별 Application
 └── test/                 # 일회성 검증 자산
     ├── networking/       # NLB smoke test
     ├── storage/          # Block Volume CSI smoke test
@@ -41,13 +39,13 @@ helm install + `kubectl apply` 수동 (멱등). 도메인은 git 박힘, secret 
 
 ## 앱 매니페스트 위치
 
-앱 **매니페스트**(deployment/service/httproute/kustomization)는 본 레포에 두지 않음 — 서비스별 별도 레포(코드 + `deploy/k8s` 동거). 본 레포에는 앱 레포를 가리키는 ArgoCD **Application CR**(포인터)만 `apps/argocd/` 에 둔다. 즉 *무엇을 배포할지의 선언(Application)* 은 인프라 레포, *어떻게 생긴지의 정의(매니페스트)* 는 앱 레포.
+앱 **매니페스트**(deployment/service/httproute/kustomization)는 본 레포에 두지 않음 — 서비스별 별도 레포(코드 + `deploy/k8s` 동거). 앱 레포를 가리키는 ArgoCD **Application CR**(포인터)도 본 레포가 아니라 전용 GitOps 레포(`k8s-gitops`)가 보유. 즉 *무엇을 배포할지의 선언(Application)* 은 GitOps 레포, *어떻게 생긴지의 정의(매니페스트)* 는 앱 레포, 본 레포는 **인프라/플랫폼만**.
 
-사유: ArgoCD 공식 권장 *config vs source code 분리* + 인프라/앱 권한 경계 + commit log 오염 방지. 상세는 [`apps/argocd/README.md`](./apps/argocd/README.md).
+사유: ArgoCD 공식 권장 *config vs source code 분리* + 인프라/앱 권한 경계 + commit log 오염 방지.
 
 > 단일 레포(앱 코드 + `deploy/`) vs deploy 전용 레포 분리는 미결. 현재는 단일 레포(앱 레포 `deploy/k8s`)를 ArgoCD 가 watch. Jenkins 이미지 태그 bump 도입 시 루프가드(`[ci skip]` + path filter) 필요 여부가 이 결정에 달림.
 
 ## 예정 추가
 
 - `platform/` — argocd, jenkins, openbao, monitoring, 데이터 계층(redis/kafka, `data` NS) 도입 완료. 관측 후속(Loki / Alloy / Tempo / Kiali) 예정
-- `apps/argocd/` — `core` Application 도입 완료. 후속 `batch`/`login` 추가 + east-west 메시(NetworkPolicy/AuthorizationPolicy)
+- 앱 레이어(app-of-apps)는 전용 GitOps 레포(`k8s-gitops`)로 분리 — `core` Application 도입 완료. 후속 `batch`/`login` 추가 + east-west 메시(NetworkPolicy/AuthorizationPolicy)

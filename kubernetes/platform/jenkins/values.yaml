@@ -143,6 +143,18 @@ controller:
                       username: GGingGGang
                       password: ${GIT_PAT}
                       description: "GitHub PAT (repo scope) — manifest bump push"
+      library-config: |
+        unclassified:
+          globalLibraries:
+            libraries:
+              - name: "shared"
+                defaultVersion: "main"
+                implicit: false
+                retriever:
+                  modernSCM:
+                    scm:
+                      git:
+                        remote: "https://github.com/${GH_ORG}/jenkins-shared-library.git"
       jobs-config: |
         jobs:
           - script: |

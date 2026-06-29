@@ -161,9 +161,7 @@ Details: [`kubernetes/platform/README.md`](./kubernetes/platform/README.md).
 
 ### 5. Deploy applications
 
-MSA services (currently `core`, a Go/chi domain API) deploy through a separate `apps` ArgoCD project (app-of-apps). Each service is its own repo (code + `deploy/k8s`); the infra repo holds only the Application pointers. Push triggers Jenkins (webhook → Kaniko → GHCR); ArgoCD syncs the manifests to a per-service namespace and the Istio Gateway exposes it under `api.${domain}/v1/<service>`.
-
-Details: [`kubernetes/apps/argocd/README.md`](./kubernetes/apps/argocd/README.md).
+MSA services (currently `core`, a Go/chi domain API) deploy through a separate `apps` ArgoCD project (app-of-apps) that lives in its own GitOps repo (`k8s-gitops`) — not in this infra repo. Each service is its own repo (code + `deploy/k8s`); the GitOps repo holds only the Application pointers. Push triggers Jenkins (webhook → Kaniko → GHCR); ArgoCD syncs the manifests to a per-service namespace and the Istio Gateway exposes it under `api.${domain}/v1/<service>`.
 
 ## Network Layout
 
