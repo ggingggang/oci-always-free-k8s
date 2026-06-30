@@ -38,6 +38,12 @@ kubectl create secret generic jenkins-admin-fixed \
   --from-literal=jenkins-admin-password='<your-password>' \
   -n cicd
 
+# 매니페스트 bump 용 git PAT — JCasC github-token credential 의 실값 (containerEnv GIT_PAT 로 주입)
+# 미존재 시 controller pod 가 secretKeyRef 로 기동 실패
+kubectl create secret generic jenkins-git-pat \
+  --from-literal=token='<github-pat-repo-scope>' \
+  -n cicd
+
 helm repo add jenkins https://charts.jenkins.io
 helm repo update
 
@@ -239,15 +245,19 @@ pipeline {
 }
 ```
 
-### JCasC seed jobs + 환경변수
+### JCasC seed — 환경변수 · 자격증명 · 라이브러리 · 잡
 
-`JCasC.configScripts` 가 세 조각으로 분리:
+`JCasC.configScripts` 가 다섯 조각으로 분리:
 
+- **`welcome-config`** — system message ("Source of truth = git").
 - **`env-config`** — `globalNodeProperties` 로 `GH_ORG` 주입 (`containerEnv` 의 동명 env 를 JCasC `${GH_ORG}` 치환으로 받음). Jenkinsfile/seed 가 GHCR 경로·레포 URL 을 이 변수로 구성 → org 이전 시 한 곳만 변경. (도메인은 변수화 안 함 — `jenkinsUrl` 등에 이미 직접 박혀 공개값)
+- **`credentials-config`** — `github-token` (usernamePassword, scope GLOBAL). 비밀번호는 `${GIT_PAT}` 치환 — `containerEnv` 의 `GIT_PAT` (Secret `jenkins-git-pat` key `token`) 에서 주입. 용도: Jenkins 가 앱 레포 `deploy` 매니페스트에 image tag 를 commit/push (manifest bump). **credential 실값은 git 에 평문 ❌** — JCasC 는 `${GIT_PAT}` placeholder 만 보유, 실값은 Secret.
+- **`library-config`** — Global Pipeline Library `shared` 등록 (`unclassified.globalLibraries`). `jenkins-shared-library` 레포를 modernSCM git retriever 로 로드, `defaultVersion: main`. **`implicit: false` 라 자동 로드 ❌** — Jenkinsfile 이 `@Library('shared') _` 로 명시 호출해야 적재. 공용 step(예: `kanikoBuild`)을 앱 레포 3곳이 중복 보유하지 않게 하는 단일 출처.
 - **`jobs-config`** — `job-dsl` 로 잡을 선언적 생성. UI 클릭 잡 생성은 emptyDir 라 재기동 시 증발하므로 무효. 현재 `core` `pipelineJob` 1개:
   - `cpsScm` 가 앱 레포 git + `scriptPath('Jenkinsfile')` (Jenkinsfile 은 앱 레포 루트 소유)
   - `properties { githubProjectUrl(...) }` + `triggers { githubPush() }` — `github` plugin 이 webhook 페이로드의 레포 URL 을 잡의 SCM URL 과 매칭해 트리거. (`triggers is deprecated` 경고는 무해)
-- **`welcome-config`** — system message.
+
+> 자격증명·라이브러리·잡이 모두 `${GH_ORG}` 로 레포 URL 을 구성 → org 이전 시 `containerEnv` 한 곳만 변경.
 
 > 트리거 등록 방식: 현재는 GitHub repo settings 에서 webhook **수동 등록** + `githubPush()`. `manageHooks: true`(Jenkins 가 레포에 훅 자동 생성)는 multibranch/organizationFolder 잡이라야 동작 — 다중 레포 일반화 시점에 전환. 종착지는 GitHub App.
 
@@ -295,17 +305,19 @@ manifest commit 패턴: Jenkins 는 *k8s API 직접 호출 ❌*, *git push (앱 
 
 > 트리거를 webhook 으로 둔 이유: SCM polling 은 public 표면 0 이지만 지연·낭비. webhook-via-Gateway 는 GitHub Actions 에 tailscale 을 심는 안티패턴(앱 레포마다 네트워크 신원 분산)을 피하면서 이벤트 드리븐을 얻는다 — 앱 레포엔 tailscale 0, 트리거 설정은 GitHub repo settings(git 밖).
 
-### Secret 운영 — `ghcr-push` 만 선행, 나머지는 앱 레포 시점
+### Secret 운영 — `ghcr-push` · `jenkins-git-pat` 선행, 나머지는 앱 레포 시점
 
-본 setup 에 필수: `ghcr-push` 1종 (Kaniko 빌드용, `build` NS).
+본 setup 에 필수:
+
+- `ghcr-push` (Kaniko 빌드용, `build` NS) — type `kubernetes.io/dockerconfigjson`
+- `jenkins-git-pat` (`cicd` NS, key `token`) — `containerEnv` 의 `GIT_PAT` → JCasC `credentials-config` 의 `github-token` 비밀번호. 매니페스트 bump push 용. **미존재 시 controller pod 가 `secretKeyRef` 로 기동 실패.**
 
 앱 레포 등장 시점에 추가 도입:
 
 - `ghcr-pull` — 앱 Pod (`app` NS) `imagePullSecrets`
-- `github-manifest-pat` — Jenkins 가 앱 레포 `deploy/values.yaml` 에 image tag commit (또는 GitHub App Installation Token 으로 직행)
 - `gh-webhook-secret` — GitHub Webhook HMAC SHA-256 검증
 
-4종 모두 Vault Agent Injector 또는 GitHub App 으로 이관 예정.
+모두 Vault Agent Injector 또는 GitHub App 으로 이관 예정.
 
 ## 5. 주의 사항
 
